@@ -1,0 +1,62 @@
+{
+  "notice": "Test data. The keys in these vectors are test keys — never Anis’s or any partner’s real keys — and partners.anis.ly is an example address.",
+  "id": "RS-007-enrollment-200-no-request-binding",
+  "title": "Enrollment status, 200, NO request binding",
+  "description": "The enrollment branch carries no request signature, so the signature-input;req component is OMITTED rather than covered as an empty string. A client that always demands the binding cannot complete enrollment; one that never demands it loses the binding everywhere else.",
+  "route": "GET /v1/enrollments/{invitationId}/status",
+  "profile": "partner-response-v1",
+  "verifyAt": 1789804805,
+  "request": {
+    "signatureInput": null
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-Id": "01J9R2K8T4V6XQ0M3B7C5D9E1F",
+      "Content-Digest": "sha-256=:j5UFnUtKasyaz24lOg60k0RuCSL2gCgjz8qsMOdSW/w=:",
+      "Cache-Control": "no-store",
+      "Signature-Input": "sig1=(\"@status\" \"content-digest\" \"x-request-id\" \"cache-control\");created=1789804800;keyid=\"partner-response-signing/v1-active\";alg=\"ecdsa-p256-sha256\"",
+      "Signature": "sig1=:m3S6RkdXGa6DE3klTXPE5ETu4TZUjbO9bQCnG7Xkf1wQIqj91QWkKYDvCFdGf1bCOBQeDWiEs/Zj/BAqoOfAyw==:"
+    },
+    "bodyBase64": "eyJrZXlJZCI6IjNmMmE5YzE0LThkNmUtNGIyMS05ZjA3LTVjOGFiMmQ2MWU0MyIsImNoYWxsZW5nZUdlbmVyYXRpb24iOjEsInByb29mU3RhdGUiOiJhY2NlcHRlZCIsImFwcHJvdmFsU3RhdGUiOiJwZW5kaW5nIiwic3RhdGUiOiJwZW5kaW5nQXBwcm92YWwiLCJleHBpcmVzQXQiOiIyMDI2LTA5LTI2VDA4OjAwOjAwWiJ9",
+    "bodyUtf8": "{\"keyId\":\"3f2a9c14-8d6e-4b21-9f07-5c8ab2d61e43\",\"challengeGeneration\":1,\"proofState\":\"accepted\",\"approvalState\":\"pending\",\"state\":\"pendingApproval\",\"expiresAt\":\"2026-09-26T08:00:00Z\"}"
+  },
+  "signingKeys": {
+    "keys": [
+      {
+        "kty": "EC",
+        "crv": "P-256",
+        "x": "bmeAJqm9Bwq1qpRxN64CnOYN2WaslFCCduE1M2bhRQU",
+        "y": "V7rgefFMX7Vfs5UQf8NmOil4j6HmkLgyjgLQnPWVeFI",
+        "kid": "partner-response-signing/v1-active",
+        "use": "sig",
+        "alg": "ES256"
+      },
+      {
+        "kty": "EC",
+        "crv": "P-256",
+        "x": "er2q-OPbI_D9z00KYCnHWyBy1_9G9dR-DXk10tC4w4M",
+        "y": "wCl8upDZi1PmxfC8xKhsmVidCdIpaa_DAiPu1gFYPmc",
+        "kid": "partner-response-signing/v2-next",
+        "use": "sig",
+        "alg": "ES256"
+      },
+      {
+        "kty": "EC",
+        "crv": "P-256",
+        "x": "KpEKtjMs9wdka1QzBBzIbukX71gl2N36yrYufvktAEU",
+        "y": "cYho-fi98X3voIEv7lkMH3KjJMyFF3hbzc4_3IQd9GM",
+        "kid": "partner-response-signing/v0-retiring",
+        "use": "sig",
+        "alg": "ES256"
+      }
+    ]
+  },
+  "expected": {
+    "outcome": "accept",
+    "reason": null,
+    "rationale": "Every covered component is present with the value the base names, the digest matches the body, and the signature verifies under the active published key."
+  },
+  "signatureBaseForDebugging": "\"@status\": 200\n\"content-digest\": sha-256=:j5UFnUtKasyaz24lOg60k0RuCSL2gCgjz8qsMOdSW/w=:\n\"x-request-id\": 01J9R2K8T4V6XQ0M3B7C5D9E1F\n\"cache-control\": no-store\n\"@signature-params\": (\"@status\" \"content-digest\" \"x-request-id\" \"cache-control\");created=1789804800;keyid=\"partner-response-signing/v1-active\";alg=\"ecdsa-p256-sha256\""
+}

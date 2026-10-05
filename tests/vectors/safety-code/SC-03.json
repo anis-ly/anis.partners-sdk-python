@@ -1,0 +1,170 @@
+{
+  "id": "SC-03",
+  "title": "Key whose code starts with a 1",
+  "description": "expectedCode is the first 80 bits of the 32-byte thumbprint, Crockford base32, grouped XXXX-XXXX-XXXX-XXXX. An entry matches when, after trimming, removing spaces and '-', upper-casing and mapping O to 0 and I and L to 1, it is 16 characters equal to the code; any other length is compared, trimmed but otherwise exactly as typed, with the full thumbprint.",
+  "publicJwk": {
+    "kty": "EC",
+    "crv": "P-256",
+    "x": "bmeAJqm9Bwq1qpRxN64CnOYN2WaslFCCduE1M2bhRQU",
+    "y": "V7rgefFMX7Vfs5UQf8NmOil4j6HmkLgyjgLQnPWVeFI"
+  },
+  "thumbprint": "DAmFZrDUUwJtqfrhIngj2Tdr1Iy5reOL8wEuzBZb0H4",
+  "expectedCode": "1G4R-ASNG-TH9G-4VD9",
+  "inputs": [
+    {
+      "case": "exact code",
+      "entered": "1G4R-ASNG-TH9G-4VD9",
+      "matches": true
+    },
+    {
+      "case": "lower case",
+      "entered": "1g4r-asng-th9g-4vd9",
+      "matches": true
+    },
+    {
+      "case": "no dashes",
+      "entered": "1G4RASNGTH9G4VD9",
+      "matches": true
+    },
+    {
+      "case": "no dashes, lower case",
+      "entered": "1g4rasngth9g4vd9",
+      "matches": true
+    },
+    {
+      "case": "spaces instead of dashes",
+      "entered": "1G4R ASNG TH9G 4VD9",
+      "matches": true
+    },
+    {
+      "case": "surrounding spaces",
+      "entered": "  1G4R-ASNG-TH9G-4VD9  ",
+      "matches": true
+    },
+    {
+      "case": "dashes and spaces mixed",
+      "entered": "1G4R- ASNG- - TH9G-4VD9",
+      "matches": true
+    },
+    {
+      "case": "dashes in other places",
+      "entered": "1G4-RASNGTH9-G4VD9",
+      "matches": true
+    },
+    {
+      "case": "letter I for one",
+      "entered": "IG4RASNGTH9G4VD9",
+      "matches": true
+    },
+    {
+      "case": "letter I for one, lower case",
+      "entered": "ig4rasngth9g4vd9",
+      "matches": true
+    },
+    {
+      "case": "letter L for one",
+      "entered": "LG4RASNGTH9G4VD9",
+      "matches": true
+    },
+    {
+      "case": "letter L for one, lower case",
+      "entered": "lg4rasngth9g4vd9",
+      "matches": true
+    },
+    {
+      "case": "letter O where the code has no zero",
+      "entered": "OG4RASNGTH9G4VD9",
+      "matches": false
+    },
+    {
+      "case": "first character wrong",
+      "entered": "2G4RASNGTH9G4VD9",
+      "matches": false
+    },
+    {
+      "case": "last character wrong",
+      "entered": "1G4RASNGTH9G4VDA",
+      "matches": false
+    },
+    {
+      "case": "middle character wrong",
+      "entered": "1G4RASNGVH9G4VD9",
+      "matches": false
+    },
+    {
+      "case": "letter U (not in the alphabet) in place of a character",
+      "entered": "UG4RASNGTH9G4VD9",
+      "matches": false
+    },
+    {
+      "case": "15 characters",
+      "entered": "1G4RASNGTH9G4VD",
+      "matches": false
+    },
+    {
+      "case": "17 characters",
+      "entered": "1G4RASNGTH9G4VD91",
+      "matches": false
+    },
+    {
+      "case": "code of a different key",
+      "entered": "SSD1-D49B-32XT-6CB3",
+      "matches": false
+    },
+    {
+      "case": "empty",
+      "entered": "",
+      "matches": false
+    },
+    {
+      "case": "only spaces",
+      "entered": "   ",
+      "matches": false
+    },
+    {
+      "case": "only dashes",
+      "entered": "----",
+      "matches": false
+    },
+    {
+      "case": "full thumbprint",
+      "entered": "DAmFZrDUUwJtqfrhIngj2Tdr1Iy5reOL8wEuzBZb0H4",
+      "matches": true
+    },
+    {
+      "case": "full thumbprint with surrounding spaces",
+      "entered": "  DAmFZrDUUwJtqfrhIngj2Tdr1Iy5reOL8wEuzBZb0H4  ",
+      "matches": true
+    },
+    {
+      "case": "full thumbprint, lower case",
+      "entered": "damfzrduuwjtqfrhingj2tdr1iy5reol8weuzbzb0h4",
+      "matches": false
+    },
+    {
+      "case": "full thumbprint, one character wrong",
+      "entered": "DAmFZrDUUwJtqfrhIngjATdr1Iy5reOL8wEuzBZb0H4",
+      "matches": false
+    },
+    {
+      "case": "full thumbprint, last character dropped",
+      "entered": "DAmFZrDUUwJtqfrhIngj2Tdr1Iy5reOL8wEuzBZb0H",
+      "matches": false
+    },
+    {
+      "case": "full thumbprint with base64 padding",
+      "entered": "DAmFZrDUUwJtqfrhIngj2Tdr1Iy5reOL8wEuzBZb0H4=",
+      "matches": false
+    },
+    {
+      "case": "full thumbprint of a different key",
+      "entered": "zloWkSsYu6MxY_zAylB_zfwR8kev39llTgkuTIPIFTk",
+      "matches": false
+    },
+    {
+      "case": "first ten thumbprint characters",
+      "entered": "DAmFZrDUUw",
+      "matches": false
+    }
+  ]
+}

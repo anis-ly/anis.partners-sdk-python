@@ -1,0 +1,51 @@
+{
+  "notice": "Test data. The keys in these vectors are test keys — never Anis’s or any partner’s real keys — and partners.anis.ly is an example address.",
+  "id": "RQ-08-order-mutation",
+  "title": "Order creation: the full profile",
+  "description": "`idempotency-key` sits BEFORE `x-anis-date`, not after. `x-anis-date` is last in every kind of signed call, and an order is a change plus the key, so the added part is second to last. A client that appends it lands one line out and fails every order.",
+  "profile": "OrderMutation",
+  "coveredComponents": [
+    "@method",
+    "@authority",
+    "@path",
+    "@query",
+    "content-digest",
+    "nonce",
+    "idempotency-key",
+    "x-anis-date"
+  ],
+  "key": {
+    "keyId": "3f2a9c14-8d6e-4b21-9f07-5c8ab2d61e43",
+    "privateKeyPkcs8Base64": "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgyIpGK3RErH7j8NIijtNQ18k1tgiJBfxXcJ/qX+dZdzahRANCAASZ08XDV443a7dWnaQlMgX8dHIShU8Ta3IMgBcb2/O4nNvjoDQD0pcOP5uDAIq72HMqwK/+X0kbY4X8J7QRc7xK",
+    "publicJwk": {
+      "kty": "EC",
+      "crv": "P-256",
+      "x": "mdPFw1eON2u3Vp2kJTIF_HRyEoVPE2tyDIAXG9vzuJw",
+      "y": "2-OgNAPSlw4_m4MAirvYcyrAr_5fSRtjhfwntBFzvEo",
+      "kid": "3f2a9c14-8d6e-4b21-9f07-5c8ab2d61e43"
+    }
+  },
+  "request": {
+    "routeTemplate": "/v1/wallets/{walletId}/orders",
+    "method": "POST",
+    "authorityAsGiven": "partners.anis.ly",
+    "authority": "partners.anis.ly",
+    "path": "/v1/wallets/2f1c8a94-6d37-4e52-b8a1-0c9e5d3f7b26/orders",
+    "canonicalQuery": "",
+    "anisDate": "2026-09-19T08:00:00Z",
+    "nonce": "b2F1dGgtbm9uY2UtMDAx",
+    "idempotencyKey": "9b2e4f17-3c6a-4d58-b0e1-7a5c8d2f6b34",
+    "bodyBase64": "eyJjYXJkSWQiOiI4ZDRiMWU3My05YTI1LTRjNjAtOGYzNy02YjJlOWQ1YTFjNDgiLCJxdWFudGl0eSI6MiwiZXhwZWN0ZWRVbml0UHJpY2UiOnsiYW1vdW50IjoiMTAuNTAwIiwiY3VycmVuY3kiOiJMWUQifSwiZXhwZWN0ZWRUb3RhbCI6eyJhbW91bnQiOiIyMS4wMDAiLCJjdXJyZW5jeSI6IkxZRCJ9LCJ1c2VBbGxvd2VkRGVidCI6ZmFsc2V9",
+    "bodyUtf8": "{\"cardId\":\"8d4b1e73-9a25-4c60-8f37-6b2e9d5a1c48\",\"quantity\":2,\"expectedUnitPrice\":{\"amount\":\"10.500\",\"currency\":\"LYD\"},\"expectedTotal\":{\"amount\":\"21.000\",\"currency\":\"LYD\"},\"useAllowedDebt\":false}"
+  },
+  "signature": {
+    "created": 1789804800,
+    "expires": 1789804860
+  },
+  "expected": {
+    "contentDigest": "sha-256=:3AuIAnFFepkxwk6edx9OofFKHz5L8cSdZNVmztycemo=:",
+    "signatureInput": "sig1=(\"@method\" \"@authority\" \"@path\" \"@query\" \"content-digest\" \"nonce\" \"idempotency-key\" \"x-anis-date\");created=1789804800;expires=1789804860;keyid=\"3f2a9c14-8d6e-4b21-9f07-5c8ab2d61e43\";alg=\"ecdsa-p256-sha256\";nonce=\"b2F1dGgtbm9uY2UtMDAx\"",
+    "signatureBaseBase64": "IkBtZXRob2QiOiBQT1NUCiJAYXV0aG9yaXR5IjogcGFydG5lcnMuYW5pcy5seQoiQHBhdGgiOiAvdjEvd2FsbGV0cy8yZjFjOGE5NC02ZDM3LTRlNTItYjhhMS0wYzllNWQzZjdiMjYvb3JkZXJzCiJAcXVlcnkiOiA/CiJjb250ZW50LWRpZ2VzdCI6IHNoYS0yNTY9OjNBdUlBbkZGZXBreHdrNmVkeDlPb2ZGS0h6NUw4Y1NkWk5WbXp0eWNlbW89Ogoibm9uY2UiOiBiMkYxZEdndGJtOXVZMlV0TURBeAoiaWRlbXBvdGVuY3kta2V5IjogOWIyZTRmMTctM2M2YS00ZDU4LWIwZTEtN2E1YzhkMmY2YjM0CiJ4LWFuaXMtZGF0ZSI6IDIwMjYtMDktMTlUMDg6MDA6MDBaCiJAc2lnbmF0dXJlLXBhcmFtcyI6ICgiQG1ldGhvZCIgIkBhdXRob3JpdHkiICJAcGF0aCIgIkBxdWVyeSIgImNvbnRlbnQtZGlnZXN0IiAibm9uY2UiICJpZGVtcG90ZW5jeS1rZXkiICJ4LWFuaXMtZGF0ZSIpO2NyZWF0ZWQ9MTc4OTgwNDgwMDtleHBpcmVzPTE3ODk4MDQ4NjA7a2V5aWQ9IjNmMmE5YzE0LThkNmUtNGIyMS05ZjA3LTVjOGFiMmQ2MWU0MyI7YWxnPSJlY2RzYS1wMjU2LXNoYTI1NiI7bm9uY2U9ImIyRjFkR2d0Ym05dVkyVXRNREF4Ig==",
+    "signatureBaseUtf8": "\"@method\": POST\n\"@authority\": partners.anis.ly\n\"@path\": /v1/wallets/2f1c8a94-6d37-4e52-b8a1-0c9e5d3f7b26/orders\n\"@query\": ?\n\"content-digest\": sha-256=:3AuIAnFFepkxwk6edx9OofFKHz5L8cSdZNVmztycemo=:\n\"nonce\": b2F1dGgtbm9uY2UtMDAx\n\"idempotency-key\": 9b2e4f17-3c6a-4d58-b0e1-7a5c8d2f6b34\n\"x-anis-date\": 2026-09-19T08:00:00Z\n\"@signature-params\": (\"@method\" \"@authority\" \"@path\" \"@query\" \"content-digest\" \"nonce\" \"idempotency-key\" \"x-anis-date\");created=1789804800;expires=1789804860;keyid=\"3f2a9c14-8d6e-4b21-9f07-5c8ab2d61e43\";alg=\"ecdsa-p256-sha256\";nonce=\"b2F1dGgtbm9uY2UtMDAx\""
+  }
+}

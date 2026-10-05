@@ -1,0 +1,33 @@
+{
+  "notice": "Test data. The keys in these vectors are test keys — never Anis’s or any partner’s real keys — and partners.anis.ly is an example address.",
+  "id": "EP-01-first-challenge",
+  "title": "Possession proof over the first challenge",
+  "description": "The proof is NOT a signature over the challenge. It signs a domain-separated message built from values both sides hold — Anis stores only the challenge's hash — joined by \\n with none after the last line: the separator, the keyId in lower-case D form, the generation, the lower-case hex SHA-256 of the challenge's UTF-8 bytes, and the thumbprint Anis returned. P1363, 64 bytes, base64url without padding.",
+  "key": {
+    "privateKeyPkcs8Base64": "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgyIpGK3RErH7j8NIijtNQ18k1tgiJBfxXcJ/qX+dZdzahRANCAASZ08XDV443a7dWnaQlMgX8dHIShU8Ta3IMgBcb2/O4nNvjoDQD0pcOP5uDAIq72HMqwK/+X0kbY4X8J7QRc7xK",
+    "publicJwk": {
+      "kty": "EC",
+      "crv": "P-256",
+      "x": "mdPFw1eON2u3Vp2kJTIF_HRyEoVPE2tyDIAXG9vzuJw",
+      "y": "2-OgNAPSlw4_m4MAirvYcyrAr_5fSRtjhfwntBFzvEo"
+    }
+  },
+  "keySubmissionResult": {
+    "keyId": "3f2a9c14-8d6e-4b21-9f07-5c8ab2d61e43",
+    "thumbprint": "UjyME6IaGJZw9MTS-RUru6A9FRKtm8Bko_D5DLWmESw",
+    "challenge": "tX3vQ9m2Lr8Kc4Hw1Zp7Ns0Ye6Ud5Jb2Gf9Aq3Vk8Mo",
+    "challengeGeneration": 1
+  },
+  "expected": {
+    "challengeHashHex": "a9f18cb75810be9d01d18e5741b369b271544b35c000a7751ac99a41822c9495",
+    "proofMessageUtf8": "anis.partners.v2.credential-proof\n3f2a9c14-8d6e-4b21-9f07-5c8ab2d61e43\n1\na9f18cb75810be9d01d18e5741b369b271544b35c000a7751ac99a41822c9495\nUjyME6IaGJZw9MTS-RUru6A9FRKtm8Bko_D5DLWmESw",
+    "proofMessageBase64": "YW5pcy5wYXJ0bmVycy52Mi5jcmVkZW50aWFsLXByb29mCjNmMmE5YzE0LThkNmUtNGIyMS05ZjA3LTVjOGFiMmQ2MWU0MwoxCmE5ZjE4Y2I3NTgxMGJlOWQwMWQxOGU1NzQxYjM2OWIyNzE1NDRiMzVjMDAwYTc3NTFhYzk5YTQxODIyYzk0OTUKVWp5TUU2SWFHSlp3OU1UUy1SVXJ1NkE5RlJLdG04QmtvX0Q1RExXbUVTdw==",
+    "signatureEncoding": "IEEE P1363 r||s, 64 bytes, base64url without padding (86 characters)",
+    "proofRequest": {
+      "keyId": "3f2a9c14-8d6e-4b21-9f07-5c8ab2d61e43",
+      "challengeGeneration": 1,
+      "signature": "<non-deterministic: sign proofMessage and verify under publicJwk>"
+    }
+  },
+  "exampleSignature": "g8e7tJHHTuGbf-7rmT-A40gdh0uxbI2ErV57fOKQbiOWmZFAXOqOuRFc112wnxtYONXrKgXkySPyL4ezICS0BQ"
+}

@@ -1,0 +1,177 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Partner V1 public API",
+    "version": "1.0.0",
+    "description": "Reduced copy of the Anis Partner API contract: the route map and the signing kind of each route, which is all the SDK drift tests read. The complete reference is https://developers.anis.ly/openapi.json."
+  },
+  "paths": {
+    "/v1/profile": {
+      "get": {
+        "x-anis-route": {
+          "requestKind": "safeRead"
+        }
+      }
+    },
+    "/v1/wallets": {
+      "get": {
+        "x-anis-route": {
+          "requestKind": "safeRead"
+        }
+      }
+    },
+    "/v1/wallets/{walletId}": {
+      "get": {
+        "x-anis-route": {
+          "requestKind": "safeRead"
+        }
+      }
+    },
+    "/v1/wallets/{walletId}/catalog/categories": {
+      "get": {
+        "x-anis-route": {
+          "requestKind": "safeRead"
+        }
+      }
+    },
+    "/v1/wallets/{walletId}/catalog/categories/{categoryId}/subcategories": {
+      "get": {
+        "x-anis-route": {
+          "requestKind": "safeRead"
+        }
+      }
+    },
+    "/v1/wallets/{walletId}/catalog/subcategories/{subcategoryId}": {
+      "get": {
+        "x-anis-route": {
+          "requestKind": "safeRead"
+        }
+      }
+    },
+    "/v1/wallets/{walletId}/catalog/subcategories/{subcategoryId}/cards": {
+      "get": {
+        "x-anis-route": {
+          "requestKind": "safeRead"
+        }
+      }
+    },
+    "/v1/wallets/{walletId}/orders": {
+      "post": {
+        "x-anis-route": {
+          "requestKind": "orderMutation"
+        }
+      }
+    },
+    "/v1/orders/{operationId}": {
+      "get": {
+        "x-anis-route": {
+          "requestKind": "safeRead"
+        }
+      }
+    },
+    "/v1/wallets/{walletId}/cards": {
+      "get": {
+        "x-anis-route": {
+          "requestKind": "safeRead"
+        }
+      }
+    },
+    "/v1/wallets/{walletId}/cards/{soldCardId}": {
+      "get": {
+        "x-anis-route": {
+          "requestKind": "safeRead"
+        }
+      }
+    },
+    "/v1/wallets/{walletId}/cards/{soldCardId}/reveal": {
+      "post": {
+        "x-anis-route": {
+          "requestKind": "bodylessNonceMutation"
+        }
+      }
+    },
+    "/v1/wallets/{walletId}/invoices/{invoiceId}/cards/reveal": {
+      "post": {
+        "x-anis-route": {
+          "requestKind": "bodylessNonceMutation"
+        }
+      }
+    },
+    "/v1/diagnostics/signature": {
+      "post": {
+        "x-anis-route": {
+          "requestKind": "bodylessNonceMutation"
+        }
+      }
+    },
+    "/v1/enrollments/{invitationId}": {
+      "get": {
+        "x-anis-route": {
+          "requestKind": "enrollmentToken"
+        }
+      }
+    },
+    "/v1/enrollments/{invitationId}/keys": {
+      "post": {
+        "x-anis-route": {
+          "requestKind": "enrollmentToken"
+        }
+      }
+    },
+    "/v1/enrollments/{invitationId}/proof": {
+      "post": {
+        "x-anis-route": {
+          "requestKind": "enrollmentToken"
+        }
+      }
+    },
+    "/v1/enrollments/{invitationId}/status": {
+      "get": {
+        "x-anis-route": {
+          "requestKind": "enrollmentToken"
+        }
+      }
+    },
+    "/.well-known/partner-signing-keys.json": {
+      "get": {
+        "x-anis-route": {
+          "requestKind": "public"
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "EnrollmentKeyResult": {
+        "type": "object",
+        "description": "Returned exactly once.",
+        "required": [
+          "keyId",
+          "thumbprint",
+          "safetyCode",
+          "challenge"
+        ],
+        "properties": {
+          "keyId": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "thumbprint": {
+            "type": "string",
+            "description": "RFC 7638 JWK thumbprint."
+          },
+          "safetyCode": {
+            "type": "string",
+            "description": "The 16-character safety code derived from your key's fingerprint. Anis staff will phone your technical contact and ask you to read it before your key goes live."
+          },
+          "challenge": {
+            "type": "string",
+            "description": "Domain-separated challenge plaintext."
+          },
+          "challengeGeneration": {
+            "type": "integer"
+          }
+        }
+      }
+    }
+  }
+}

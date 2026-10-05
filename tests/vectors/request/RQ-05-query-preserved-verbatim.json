@@ -1,0 +1,48 @@
+{
+  "notice": "Test data. The keys in these vectors are test keys — never Anis’s or any partner’s real keys — and partners.anis.ly is an example address.",
+  "id": "RQ-05-query-preserved-verbatim",
+  "title": "Query with characters a normalizer would touch",
+  "description": "Percent-encoding, ordering and repeated keys all survive unchanged. An SDK that rebuilds the query from a parsed dictionary will re-order or re-encode it and fail here.",
+  "profile": "SafeRead",
+  "coveredComponents": [
+    "@method",
+    "@authority",
+    "@path",
+    "@query",
+    "x-anis-date"
+  ],
+  "key": {
+    "keyId": "3f2a9c14-8d6e-4b21-9f07-5c8ab2d61e43",
+    "privateKeyPkcs8Base64": "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgyIpGK3RErH7j8NIijtNQ18k1tgiJBfxXcJ/qX+dZdzahRANCAASZ08XDV443a7dWnaQlMgX8dHIShU8Ta3IMgBcb2/O4nNvjoDQD0pcOP5uDAIq72HMqwK/+X0kbY4X8J7QRc7xK",
+    "publicJwk": {
+      "kty": "EC",
+      "crv": "P-256",
+      "x": "mdPFw1eON2u3Vp2kJTIF_HRyEoVPE2tyDIAXG9vzuJw",
+      "y": "2-OgNAPSlw4_m4MAirvYcyrAr_5fSRtjhfwntBFzvEo",
+      "kid": "3f2a9c14-8d6e-4b21-9f07-5c8ab2d61e43"
+    }
+  },
+  "request": {
+    "routeTemplate": "/v1/wallets",
+    "method": "GET",
+    "authorityAsGiven": "partners.anis.ly",
+    "authority": "partners.anis.ly",
+    "path": "/v1/wallets",
+    "canonicalQuery": "b=2&a=1&a=2&t=x%2By",
+    "anisDate": "2026-09-19T08:00:00Z",
+    "nonce": null,
+    "idempotencyKey": null,
+    "bodyBase64": null,
+    "bodyUtf8": null
+  },
+  "signature": {
+    "created": 1789804800,
+    "expires": 1789804860
+  },
+  "expected": {
+    "contentDigest": null,
+    "signatureInput": "sig1=(\"@method\" \"@authority\" \"@path\" \"@query\" \"x-anis-date\");created=1789804800;expires=1789804860;keyid=\"3f2a9c14-8d6e-4b21-9f07-5c8ab2d61e43\";alg=\"ecdsa-p256-sha256\"",
+    "signatureBaseBase64": "IkBtZXRob2QiOiBHRVQKIkBhdXRob3JpdHkiOiBwYXJ0bmVycy5hbmlzLmx5CiJAcGF0aCI6IC92MS93YWxsZXRzCiJAcXVlcnkiOiA/Yj0yJmE9MSZhPTImdD14JTJCeQoieC1hbmlzLWRhdGUiOiAyMDI2LTA5LTE5VDA4OjAwOjAwWgoiQHNpZ25hdHVyZS1wYXJhbXMiOiAoIkBtZXRob2QiICJAYXV0aG9yaXR5IiAiQHBhdGgiICJAcXVlcnkiICJ4LWFuaXMtZGF0ZSIpO2NyZWF0ZWQ9MTc4OTgwNDgwMDtleHBpcmVzPTE3ODk4MDQ4NjA7a2V5aWQ9IjNmMmE5YzE0LThkNmUtNGIyMS05ZjA3LTVjOGFiMmQ2MWU0MyI7YWxnPSJlY2RzYS1wMjU2LXNoYTI1NiI=",
+    "signatureBaseUtf8": "\"@method\": GET\n\"@authority\": partners.anis.ly\n\"@path\": /v1/wallets\n\"@query\": ?b=2&a=1&a=2&t=x%2By\n\"x-anis-date\": 2026-09-19T08:00:00Z\n\"@signature-params\": (\"@method\" \"@authority\" \"@path\" \"@query\" \"x-anis-date\");created=1789804800;expires=1789804860;keyid=\"3f2a9c14-8d6e-4b21-9f07-5c8ab2d61e43\";alg=\"ecdsa-p256-sha256\""
+  }
+}

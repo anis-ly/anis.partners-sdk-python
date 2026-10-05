@@ -1,0 +1,37 @@
+name: release
+
+# Publishing a GitHub release tagged vX.Y.Z tests, builds and publishes that version to PyPI.
+# Nothing else publishes: a push to main never does.
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      contents: read
+      id-token: write # PyPI Trusted Publishing: GitHub proves this workflow's identity, PyPI accepts it instead of a token.
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+
+      - name: The tag must match pyproject.toml
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          declared="$(grep -m1 '^version' pyproject.toml | cut -d'"' -f2)"
+          if [ "$version" != "$declared" ]; then
+            echo "The release tag '$GITHUB_REF_NAME' does not match pyproject version '$declared'." >&2
+            exit 1
+          fi
+
+      - run: uv sync --python 3.11
+      - run: uv run pytest -q
+      - run: uv build
+
+      - uses: pypa/gh-action-pypi-publish@release/v1

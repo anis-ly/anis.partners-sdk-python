@@ -1,0 +1,150 @@
+{
+  "id": "SC-02",
+  "title": "The enrollment key of EP-01 (its thumbprint is the one EP-01 carries, and contains both '-' and '_')",
+  "description": "expectedCode is the first 80 bits of the 32-byte thumbprint, Crockford base32, grouped XXXX-XXXX-XXXX-XXXX. An entry matches when, after trimming, removing spaces and '-', upper-casing and mapping O to 0 and I and L to 1, it is 16 characters equal to the code; any other length is compared, trimmed but otherwise exactly as typed, with the full thumbprint.",
+  "publicJwk": {
+    "kty": "EC",
+    "crv": "P-256",
+    "x": "mdPFw1eON2u3Vp2kJTIF_HRyEoVPE2tyDIAXG9vzuJw",
+    "y": "2-OgNAPSlw4_m4MAirvYcyrAr_5fSRtjhfwntBFzvEo"
+  },
+  "thumbprint": "UjyME6IaGJZw9MTS-RUru6A9FRKtm8Bko_D5DLWmESw",
+  "expectedCode": "A8Y8-R4X2-38C9-CW7M",
+  "inputs": [
+    {
+      "case": "exact code",
+      "entered": "A8Y8-R4X2-38C9-CW7M",
+      "matches": true
+    },
+    {
+      "case": "lower case",
+      "entered": "a8y8-r4x2-38c9-cw7m",
+      "matches": true
+    },
+    {
+      "case": "no dashes",
+      "entered": "A8Y8R4X238C9CW7M",
+      "matches": true
+    },
+    {
+      "case": "no dashes, lower case",
+      "entered": "a8y8r4x238c9cw7m",
+      "matches": true
+    },
+    {
+      "case": "spaces instead of dashes",
+      "entered": "A8Y8 R4X2 38C9 CW7M",
+      "matches": true
+    },
+    {
+      "case": "surrounding spaces",
+      "entered": "  A8Y8-R4X2-38C9-CW7M  ",
+      "matches": true
+    },
+    {
+      "case": "dashes and spaces mixed",
+      "entered": "A8Y8- R4X2- - 38C9-CW7M",
+      "matches": true
+    },
+    {
+      "case": "dashes in other places",
+      "entered": "A8Y-8R4X238C-9CW7M",
+      "matches": true
+    },
+    {
+      "case": "letter O where the code has no zero",
+      "entered": "O8Y8R4X238C9CW7M",
+      "matches": false
+    },
+    {
+      "case": "first character wrong",
+      "entered": "B8Y8R4X238C9CW7M",
+      "matches": false
+    },
+    {
+      "case": "last character wrong",
+      "entered": "A8Y8R4X238C9CW7N",
+      "matches": false
+    },
+    {
+      "case": "middle character wrong",
+      "entered": "A8Y8R4X248C9CW7M",
+      "matches": false
+    },
+    {
+      "case": "letter U (not in the alphabet) in place of a character",
+      "entered": "U8Y8R4X238C9CW7M",
+      "matches": false
+    },
+    {
+      "case": "15 characters",
+      "entered": "A8Y8R4X238C9CW7",
+      "matches": false
+    },
+    {
+      "case": "17 characters",
+      "entered": "A8Y8R4X238C9CW7MA",
+      "matches": false
+    },
+    {
+      "case": "code of a different key",
+      "entered": "1G4R-ASNG-TH9G-4VD9",
+      "matches": false
+    },
+    {
+      "case": "empty",
+      "entered": "",
+      "matches": false
+    },
+    {
+      "case": "only spaces",
+      "entered": "   ",
+      "matches": false
+    },
+    {
+      "case": "only dashes",
+      "entered": "----",
+      "matches": false
+    },
+    {
+      "case": "full thumbprint",
+      "entered": "UjyME6IaGJZw9MTS-RUru6A9FRKtm8Bko_D5DLWmESw",
+      "matches": true
+    },
+    {
+      "case": "full thumbprint with surrounding spaces",
+      "entered": "  UjyME6IaGJZw9MTS-RUru6A9FRKtm8Bko_D5DLWmESw  ",
+      "matches": true
+    },
+    {
+      "case": "full thumbprint, lower case",
+      "entered": "ujyme6iagjzw9mts-ruru6a9frktm8bko_d5dlwmesw",
+      "matches": false
+    },
+    {
+      "case": "full thumbprint, one character wrong",
+      "entered": "UjyME6IaGJZw9MTS-RUrA6A9FRKtm8Bko_D5DLWmESw",
+      "matches": false
+    },
+    {
+      "case": "full thumbprint, last character dropped",
+      "entered": "UjyME6IaGJZw9MTS-RUru6A9FRKtm8Bko_D5DLWmES",
+      "matches": false
+    },
+    {
+      "case": "full thumbprint with base64 padding",
+      "entered": "UjyME6IaGJZw9MTS-RUru6A9FRKtm8Bko_D5DLWmESw=",
+      "matches": false
+    },
+    {
+      "case": "full thumbprint of a different key",
+      "entered": "DAmFZrDUUwJtqfrhIngj2Tdr1Iy5reOL8wEuzBZb0H4",
+      "matches": false
+    },
+    {
+      "case": "first ten thumbprint characters",
+      "entered": "UjyME6IaGJ",
+      "matches": false
+    }
+  ]
+}

@@ -1,0 +1,271 @@
+{
+  "description": "Reduced copy of the Anis Partner API error catalogue: the public codes only, with their HTTP status, whether they are retryable and the retry guidance. Every code is documented at https://developers.anis.ly.",
+  "representations": [
+    {
+      "publicCode": "invalid_credentials",
+      "httpStatus": 401,
+      "retryable": false,
+      "retryGuidance": "Correct the signing credentials or profile before retrying; key and application state details are intentionally indistinguishable.",
+      "publicDocumentation": true
+    },
+    {
+      "publicCode": "signature_expired",
+      "httpStatus": 401,
+      "retryable": true,
+      "retryGuidance": "Reserved: the current API never sends this code. A signature outside its validity window is answered invalid_credentials (401); sign again with current timestamps.",
+      "publicDocumentation": true
+    },
+    {
+      "publicCode": "invalid_content_digest",
+      "httpStatus": 400,
+      "retryable": false,
+      "retryGuidance": "Reserved: the current API never sends this code. A Content-Digest that does not match the body is answered malformed_signed_request (400).",
+      "publicDocumentation": true
+    },
+    {
+      "publicCode": "malformed_signed_request",
+      "httpStatus": 400,
+      "retryable": false,
+      "retryGuidance": "Rebuild how the request is signed: send both Signature and Signature-Input, cover the required components in the documented order, send every header the route requires, and compute Content-Digest over the exact body bytes. Repeating the same request unchanged fails the same way.",
+      "publicDocumentation": true
+    },
+    {
+      "publicCode": "replay_detected",
+      "httpStatus": 409,
+      "retryable": true,
+      "retryGuidance": "Use a fresh nonce and signature while preserving the idempotency key for the same business intent.",
+      "publicDocumentation": true
+    },
+    {
+      "publicCode": "source_ip_not_allowed",
+      "httpStatus": 403,
+      "retryable": false,
+      "retryGuidance": "Anis network protection blocked this source address. Contact Anis support with the address if it should be allowed.",
+      "publicDocumentation": true
+    },
+    {
+      "publicCode": "insufficient_scope",
+      "httpStatus": 403,
+      "retryable": false,
+      "retryGuidance": "The application is not permitted to make this call: check that it holds the permission the call needs and that you call from a network agreed with Anis, then ask Anis staff to change either.",
+      "publicDocumentation": true
+    },
+    {
+      "publicCode": "binding_not_authorized",
+      "httpStatus": 403,
+      "retryable": false,
+      "retryGuidance": "Restore the directly owned active account and Business subscription before making a new request.",
+      "publicDocumentation": true
+    },
+    {
+      "publicCode": "resource_not_found",
+      "httpStatus": 404,
+      "retryable": false,
+      "retryGuidance": "Verify the resource identifier and application ownership; inaccessible resources are intentionally indistinguishable from absence.",
+      "publicDocumentation": true
+    },
+    {
+      "publicCode": "card_not_found",
+      "httpStatus": 404,
+      "retryable": false,
+      "retryGuidance": "Verify the sold-card identifier and wallet; absent and inaccessible single cards return the same representation.",
+      "publicDocumentation": true
+    },
+    {
+      "publicCode": "wallet_not_granted",
+      "httpStatus": 404,
+      "retryable": false,
+      "retryGuidance": "Obtain an approved current wallet grant before making a new request.",
+      "publicDocumentation": true
+    },
+    {
+      "publicCode": "validation_failed",
+      "httpStatus": 422,
+      "retryable": false,
+      "retryGuidance": "The response never names the field: check the request against the documented rules before sending it again. How the request is sent counts too: a body over 64 KB, a chunked body (send Content-Length instead), headers over 32 KB in total, a path and query over 2,048 characters, a body on a call that takes none, or an order whose Idempotency-Key is missing or is not a UUID written with hyphens.",
+      "publicDocumentation": true
+    },
+    {
+      "publicCode": "idempotency_conflict",
+      "httpStatus": 409,
+      "retryable": false,
+      "retryGuidance": "Reuse the key only for identical intent; use a new UUID only for a genuinely new operation.",
+      "publicDocumentation": true
+    },
+    {
+      "publicCode": "operation_processing",
+      "httpStatus": 202,
+      "retryable": true,
+      "retryGuidance": "Not an error: the order was accepted and is still being processed. Wait for the Retry-After delay, then repeat the identical POST with the same Idempotency-Key.",
+      "publicDocumentation": true
+    },
+    {
+      "publicCode": "allowed_debt_consent_required",
+      "httpStatus": 402,
+      "retryable": false,
+      "retryGuidance": "Submit a new operation with explicit allowed-debt consent if the Partner intends to use debt.",
+      "publicDocumentation": true
+    },
+    {
+      "publicCode": "insufficient_balance",
+      "httpStatus": 409,
+      "retryable": false,
+      "retryGuidance": "Submit a new operation only after the authoritative balance or allowed-debt state changes.",
+      "publicDocumentation": true
+    },
+    {
+      "publicCode": "purchase_not_allowed",
+      "httpStatus": 403,
+      "retryable": false,
+      "retryGuidance": "The owner policy forbids this purchase; obtain authorization before submitting a new operation.",
+      "publicDocumentation": true
+    },
+    {
+      "publicCode": "purchase_not_allowed",
+      "httpStatus": 409,
+      "retryable": false,
+      "retryGuidance": "The request conflicts with current owner business state; submit a new operation only after that state changes.",
+      "publicDocumentation": true
+    },
+    {
+      "publicCode": "owner_limit_exceeded",
+      "httpStatus": 409,
+      "retryable": false,
+      "retryGuidance": "Do not poll; submit a new operation and idempotency key only after the owner allowance is known to have changed.",
+      "publicDocumentation": true
+    },
+    {
+      "publicCode": "daily_limit_exceeded",
+      "httpStatus": 429,
+      "retryable": false,
+      "retryGuidance": "No reset time is available; submit a new operation and idempotency key only after the limit condition is known to have cleared.",
+      "publicDocumentation": true
+    },
+    {
+      "publicCode": "rate_limited",
+      "httpStatus": 429,
+      "retryable": true,
+      "retryGuidance": "honour Retry-After when present; otherwise use bounded exponential backoff.",
+      "publicDocumentation": true
+    },
+    {
+      "publicCode": "wallet_disabled",
+      "httpStatus": 409,
+      "retryable": false,
+      "retryGuidance": "Submit a new request only after the wallet has been re-enabled.",
+      "publicDocumentation": true
+    },
+    {
+      "publicCode": "wallet_expired",
+      "httpStatus": 409,
+      "retryable": false,
+      "retryGuidance": "Submit a new request only after the account or Business subscription expiry is resolved.",
+      "publicDocumentation": true
+    },
+    {
+      "publicCode": "business_subscription_required",
+      "httpStatus": 409,
+      "retryable": false,
+      "retryGuidance": "Restore an active Business subscription before making a new request.",
+      "publicDocumentation": true
+    },
+    {
+      "publicCode": "account_inactive",
+      "httpStatus": 403,
+      "retryable": false,
+      "retryGuidance": "Confirm or re-enable the owner account before making a new request.",
+      "publicDocumentation": true
+    },
+    {
+      "publicCode": "currency_not_supported",
+      "httpStatus": 422,
+      "retryable": false,
+      "retryGuidance": "Use the currency required by the authoritative wallet and Catalogue contract.",
+      "publicDocumentation": true
+    },
+    {
+      "publicCode": "card_unavailable",
+      "httpStatus": 409,
+      "retryable": false,
+      "retryGuidance": "Refresh Catalogue data and submit a new operation if the item becomes available.",
+      "publicDocumentation": true
+    },
+    {
+      "publicCode": "quantity_unavailable",
+      "httpStatus": 409,
+      "retryable": false,
+      "retryGuidance": "Refresh Catalogue data or submit a new operation with an available quantity.",
+      "publicDocumentation": true
+    },
+    {
+      "publicCode": "price_changed",
+      "httpStatus": 409,
+      "retryable": false,
+      "retryGuidance": "Refresh the current price and explicitly accept it in a new operation.",
+      "publicDocumentation": true
+    },
+    {
+      "publicCode": "reveal_not_allowed",
+      "httpStatus": 409,
+      "retryable": false,
+      "retryGuidance": "The card-level reveal predicate refused disclosure; do not retry until the card state is known to have changed.",
+      "publicDocumentation": true
+    },
+    {
+      "publicCode": "invoice_reveal_limit_exceeded",
+      "httpStatus": 409,
+      "retryable": false,
+      "retryGuidance": "Use individual reveal for selected cards; invoice reveal is capped at 100.",
+      "publicDocumentation": true
+    },
+    {
+      "publicCode": "invitation_invalid",
+      "httpStatus": 401,
+      "retryable": false,
+      "retryGuidance": "Obtain a new enrollment invitation through the approved staff process.",
+      "publicDocumentation": true
+    },
+    {
+      "publicCode": "challenge_expired",
+      "httpStatus": 409,
+      "retryable": false,
+      "retryGuidance": "Restart enrollment through the approved staff action and use the new challenge generation.",
+      "publicDocumentation": true
+    },
+    {
+      "publicCode": "key_proof_invalid",
+      "httpStatus": 422,
+      "retryable": false,
+      "retryGuidance": "Correct the P-256/P1363 proof for the active challenge generation.",
+      "publicDocumentation": true
+    },
+    {
+      "publicCode": "key_duplicate",
+      "httpStatus": 409,
+      "retryable": false,
+      "retryGuidance": "This invitation already took a key, so a newly generated key pair is refused too. Read the enrolment status first; to enrol a different key, ask Anis staff to restart the enrolment.",
+      "publicDocumentation": true
+    },
+    {
+      "publicCode": "dependency_unavailable",
+      "httpStatus": 503,
+      "retryable": true,
+      "retryGuidance": "Retry with the same idempotency key for the same mutation intent after bounded backoff.",
+      "publicDocumentation": true
+    },
+    {
+      "publicCode": "request_timeout",
+      "httpStatus": 504,
+      "retryable": true,
+      "retryGuidance": "Inspect operation status or repeat the identical request with the same idempotency key.",
+      "publicDocumentation": true
+    },
+    {
+      "publicCode": "internal_error",
+      "httpStatus": 500,
+      "retryable": true,
+      "retryGuidance": "Preserve the same accepted operation and idempotency key; retry only after bounded backoff or platform remediation.",
+      "publicDocumentation": true
+    }
+  ]
+}

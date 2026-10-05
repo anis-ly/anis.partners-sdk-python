@@ -1,0 +1,63 @@
+{
+  "notice": "Test data. The keys in these vectors are test keys — never Anis’s or any partner’s real keys — and partners.anis.ly is an example address.",
+  "id": "RS-009-problem-409-replayed-refusal",
+  "title": "Order refused earlier, repeated, 409 Problem with Idempotency-Replayed true",
+  "description": "An order that was definitively refused (here `insufficient_balance`) and then sent again under the same id. Anis answers with the RECORDED refusal and the replay marker: the order is closed, nothing was charged, and the same id will return this forever. The marker is signed, so a proxy cannot turn a recorded answer into a fresh-looking one or the reverse.",
+  "route": "POST /v1/wallets/{walletId}/orders",
+  "profile": "partner-response-v1",
+  "verifyAt": 1789804805,
+  "request": {
+    "signatureInput": "sig1=(\"@method\" \"@authority\" \"@path\" \"@query\" \"content-digest\" \"nonce\" \"idempotency-key\" \"x-anis-date\");created=1789804800;expires=1789804860;keyid=\"3f2a9c14-8d6e-4b21-9f07-5c8ab2d61e43\";alg=\"ecdsa-p256-sha256\";nonce=\"b2F1dGgtbm9uY2UtMDAx\""
+  },
+  "response": {
+    "status": 409,
+    "headers": {
+      "Content-Type": "application/problem+json",
+      "X-Request-Id": "01J9R2K8T4V6XQ0M3B7C5D9E1F",
+      "Content-Digest": "sha-256=:WqEhxJ+H477fx2HQ1+6+I8/34KBqOphwIZ2RF0QNEDI=:",
+      "Idempotency-Replayed": "true",
+      "Cache-Control": "no-store",
+      "Signature-Input": "sig1=(\"@status\" \"content-digest\" \"x-request-id\" \"signature-input\";req \"idempotency-replayed\" \"cache-control\");created=1789804800;keyid=\"partner-response-signing/v1-active\";alg=\"ecdsa-p256-sha256\"",
+      "Signature": "sig1=:cBcRTOJtyzPR44LFzqr+ajAU5hbgq81I52MYti7Q5/cTMOOtcXHO5k5Yg4FFwJ5KuTpmAk5cP/ZBjaDG5xiXYA==:"
+    },
+    "bodyBase64": "eyJ0eXBlIjoiaHR0cHM6Ly9kZXZlbG9wZXJzLmFuaXMubHkvZXJyb3JzL2luc3VmZmljaWVudC1iYWxhbmNlIiwidGl0bGUiOiJJbnN1ZmZpY2llbnQgYmFsYW5jZSIsInN0YXR1cyI6NDA5LCJjb2RlIjoiaW5zdWZmaWNpZW50X2JhbGFuY2UiLCJyZXF1ZXN0SWQiOiIwMUo5UjJLOFQ0VjZYUTBNM0I3QzVEOUUxRiJ9",
+    "bodyUtf8": "{\"type\":\"https://developers.anis.ly/errors/insufficient-balance\",\"title\":\"Insufficient balance\",\"status\":409,\"code\":\"insufficient_balance\",\"requestId\":\"01J9R2K8T4V6XQ0M3B7C5D9E1F\"}"
+  },
+  "signingKeys": {
+    "keys": [
+      {
+        "kty": "EC",
+        "crv": "P-256",
+        "x": "bmeAJqm9Bwq1qpRxN64CnOYN2WaslFCCduE1M2bhRQU",
+        "y": "V7rgefFMX7Vfs5UQf8NmOil4j6HmkLgyjgLQnPWVeFI",
+        "kid": "partner-response-signing/v1-active",
+        "use": "sig",
+        "alg": "ES256"
+      },
+      {
+        "kty": "EC",
+        "crv": "P-256",
+        "x": "er2q-OPbI_D9z00KYCnHWyBy1_9G9dR-DXk10tC4w4M",
+        "y": "wCl8upDZi1PmxfC8xKhsmVidCdIpaa_DAiPu1gFYPmc",
+        "kid": "partner-response-signing/v2-next",
+        "use": "sig",
+        "alg": "ES256"
+      },
+      {
+        "kty": "EC",
+        "crv": "P-256",
+        "x": "KpEKtjMs9wdka1QzBBzIbukX71gl2N36yrYufvktAEU",
+        "y": "cYho-fi98X3voIEv7lkMH3KjJMyFF3hbzc4_3IQd9GM",
+        "kid": "partner-response-signing/v0-retiring",
+        "use": "sig",
+        "alg": "ES256"
+      }
+    ]
+  },
+  "expected": {
+    "outcome": "accept",
+    "reason": null,
+    "rationale": "Every covered component is present with the value the base names, the digest matches the body, and the signature verifies under the active published key."
+  },
+  "signatureBaseForDebugging": "\"@status\": 409\n\"content-digest\": sha-256=:WqEhxJ+H477fx2HQ1+6+I8/34KBqOphwIZ2RF0QNEDI=:\n\"x-request-id\": 01J9R2K8T4V6XQ0M3B7C5D9E1F\n\"signature-input\";req: sig1=(\"@method\" \"@authority\" \"@path\" \"@query\" \"content-digest\" \"nonce\" \"idempotency-key\" \"x-anis-date\");created=1789804800;expires=1789804860;keyid=\"3f2a9c14-8d6e-4b21-9f07-5c8ab2d61e43\";alg=\"ecdsa-p256-sha256\";nonce=\"b2F1dGgtbm9uY2UtMDAx\"\n\"idempotency-replayed\": true\n\"cache-control\": no-store\n\"@signature-params\": (\"@status\" \"content-digest\" \"x-request-id\" \"signature-input\";req \"idempotency-replayed\" \"cache-control\");created=1789804800;keyid=\"partner-response-signing/v1-active\";alg=\"ecdsa-p256-sha256\""
+}

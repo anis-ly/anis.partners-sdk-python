@@ -1,0 +1,48 @@
+{
+  "notice": "Test data. The keys in these vectors are test keys — never Anis’s or any partner’s real keys — and partners.anis.ly is an example address.",
+  "id": "RQ-01-safe-read-no-query",
+  "title": "Safe read with NO query string",
+  "description": "The @query component is \"?\" and not the empty string. RFC 9421 keeps the leading separator, so \"no query\" and \"query present but empty\" cannot sign identically and be substituted for each other. This is the single most common first-attempt failure.",
+  "profile": "SafeRead",
+  "coveredComponents": [
+    "@method",
+    "@authority",
+    "@path",
+    "@query",
+    "x-anis-date"
+  ],
+  "key": {
+    "keyId": "3f2a9c14-8d6e-4b21-9f07-5c8ab2d61e43",
+    "privateKeyPkcs8Base64": "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgyIpGK3RErH7j8NIijtNQ18k1tgiJBfxXcJ/qX+dZdzahRANCAASZ08XDV443a7dWnaQlMgX8dHIShU8Ta3IMgBcb2/O4nNvjoDQD0pcOP5uDAIq72HMqwK/+X0kbY4X8J7QRc7xK",
+    "publicJwk": {
+      "kty": "EC",
+      "crv": "P-256",
+      "x": "mdPFw1eON2u3Vp2kJTIF_HRyEoVPE2tyDIAXG9vzuJw",
+      "y": "2-OgNAPSlw4_m4MAirvYcyrAr_5fSRtjhfwntBFzvEo",
+      "kid": "3f2a9c14-8d6e-4b21-9f07-5c8ab2d61e43"
+    }
+  },
+  "request": {
+    "routeTemplate": "/v1/profile",
+    "method": "GET",
+    "authorityAsGiven": "partners.anis.ly",
+    "authority": "partners.anis.ly",
+    "path": "/v1/profile",
+    "canonicalQuery": "",
+    "anisDate": "2026-09-19T08:00:00Z",
+    "nonce": null,
+    "idempotencyKey": null,
+    "bodyBase64": null,
+    "bodyUtf8": null
+  },
+  "signature": {
+    "created": 1789804800,
+    "expires": 1789804860
+  },
+  "expected": {
+    "contentDigest": null,
+    "signatureInput": "sig1=(\"@method\" \"@authority\" \"@path\" \"@query\" \"x-anis-date\");created=1789804800;expires=1789804860;keyid=\"3f2a9c14-8d6e-4b21-9f07-5c8ab2d61e43\";alg=\"ecdsa-p256-sha256\"",
+    "signatureBaseBase64": "IkBtZXRob2QiOiBHRVQKIkBhdXRob3JpdHkiOiBwYXJ0bmVycy5hbmlzLmx5CiJAcGF0aCI6IC92MS9wcm9maWxlCiJAcXVlcnkiOiA/CiJ4LWFuaXMtZGF0ZSI6IDIwMjYtMDktMTlUMDg6MDA6MDBaCiJAc2lnbmF0dXJlLXBhcmFtcyI6ICgiQG1ldGhvZCIgIkBhdXRob3JpdHkiICJAcGF0aCIgIkBxdWVyeSIgIngtYW5pcy1kYXRlIik7Y3JlYXRlZD0xNzg5ODA0ODAwO2V4cGlyZXM9MTc4OTgwNDg2MDtrZXlpZD0iM2YyYTljMTQtOGQ2ZS00YjIxLTlmMDctNWM4YWIyZDYxZTQzIjthbGc9ImVjZHNhLXAyNTYtc2hhMjU2Ig==",
+    "signatureBaseUtf8": "\"@method\": GET\n\"@authority\": partners.anis.ly\n\"@path\": /v1/profile\n\"@query\": ?\n\"x-anis-date\": 2026-09-19T08:00:00Z\n\"@signature-params\": (\"@method\" \"@authority\" \"@path\" \"@query\" \"x-anis-date\");created=1789804800;expires=1789804860;keyid=\"3f2a9c14-8d6e-4b21-9f07-5c8ab2d61e43\";alg=\"ecdsa-p256-sha256\""
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "notice": "Test data. The keys in these vectors are test keys — never Anis’s or any partner’s real keys — and partners.anis.ly is an example address.",
+  "id": "RS-001-safe-read-profile-200-M14",
+  "title": "Request binding names a different request",
+  "description": "signature-input;req binds the response to the request that produced it. A client rebuilds the base with the Signature-Input IT SENT, so a captured response replayed against another request cannot verify. It surfaces as signature_invalid and not as a binding-specific reason, because a client never learns what the server bound — only what it sent.",
+  "route": "GET /v1/profile",
+  "profile": "partner-response-v1",
+  "verifyAt": 1789804805,
+  "request": {
+    "signatureInput": "sig1=(\"@method\" \"@authority\" \"@path\" \"@query\" \"content-digest\" \"nonce\" \"x-anis-date\");created=1789804800;expires=1789804860;keyid=\"3f2a9c14-8d6e-4b21-9f07-5c8ab2d61e43\";alg=\"ecdsa-p256-sha256\";nonce=\"b2F1dGgtbm9uY2UtMDAx\""
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-Id": "01J9R2K8T4V6XQ0M3B7C5D9E1F",
+      "Content-Digest": "sha-256=:epGQsVay09pY/GXv6MpAjMbsZ7VvobF1nAdylVo/mMk=:",
+      "Signature-Input": "sig1=(\"@status\" \"content-digest\" \"x-request-id\" \"signature-input\";req);created=1789804800;keyid=\"partner-response-signing/v1-active\";alg=\"ecdsa-p256-sha256\"",
+      "Signature": "sig1=:GDNIbq5zKXcNxSr/1ee3/qFJvdMa0jaeThGqrMjptdmgX8I5fKFsU2Ey3+1+kLGmJklw3C7mwIRgC4jTkp1Ycg==:"
+    },
+    "bodyBase64": "eyJwYXJ0bmVyIjp7ImlkIjoiN2M5ZTY2NzktNzQyNS00MGRlLTk0NGItZTA3ZmMxZjkwYWU3IiwibmFtZSI6IlBhcnRuZXIgTHRkIn0sImFwcGxpY2F0aW9uIjp7ImlkIjoiMTZmZDI3MDYtOGJhZi00MzNiLTgyZWItOGM3ZmFkYTg0N2RhIiwibmFtZSI6IlByb2R1Y3Rpb24gaW50ZWdyYXRpb24iLCJzY29wZXMiOlsicHJvZmlsZTpyZWFkIiwid2FsbGV0czpyZWFkIl19LCJkb2N1bWVudGF0aW9uVmVyc2lvbiI6IjIwMjYtMDcifQ==",
+    "bodyUtf8": "{\"partner\":{\"id\":\"7c9e6679-7425-40de-944b-e07fc1f90ae7\",\"name\":\"Partner Ltd\"},\"application\":{\"id\":\"16fd2706-8baf-433b-82eb-8c7fada847da\",\"name\":\"Production integration\",\"scopes\":[\"profile:read\",\"wallets:read\"]},\"documentationVersion\":\"2026-07\"}"
+  },
+  "signingKeys": {
+    "keys": [
+      {
+        "kty": "EC",
+        "crv": "P-256",
+        "x": "bmeAJqm9Bwq1qpRxN64CnOYN2WaslFCCduE1M2bhRQU",
+        "y": "V7rgefFMX7Vfs5UQf8NmOil4j6HmkLgyjgLQnPWVeFI",
+        "kid": "partner-response-signing/v1-active",
+        "use": "sig",
+        "alg": "ES256"
+      },
+      {
+        "kty": "EC",
+        "crv": "P-256",
+        "x": "er2q-OPbI_D9z00KYCnHWyBy1_9G9dR-DXk10tC4w4M",
+        "y": "wCl8upDZi1PmxfC8xKhsmVidCdIpaa_DAiPu1gFYPmc",
+        "kid": "partner-response-signing/v2-next",
+        "use": "sig",
+        "alg": "ES256"
+      },
+      {
+        "kty": "EC",
+        "crv": "P-256",
+        "x": "KpEKtjMs9wdka1QzBBzIbukX71gl2N36yrYufvktAEU",
+        "y": "cYho-fi98X3voIEv7lkMH3KjJMyFF3hbzc4_3IQd9GM",
+        "kid": "partner-response-signing/v0-retiring",
+        "use": "sig",
+        "alg": "ES256"
+      }
+    ]
+  },
+  "expected": {
+    "outcome": "reject",
+    "reason": "signature_invalid",
+    "rationale": "signature-input;req binds the response to the request that produced it. A client rebuilds the base with the Signature-Input IT SENT, so a captured response replayed against another request cannot verify. It surfaces as signature_invalid and not as a binding-specific reason, because a client never learns what the server bound — only what it sent."
+  },
+  "signatureBaseForDebugging": "\"@status\": 200\n\"content-digest\": sha-256=:epGQsVay09pY/GXv6MpAjMbsZ7VvobF1nAdylVo/mMk=:\n\"x-request-id\": 01J9R2K8T4V6XQ0M3B7C5D9E1F\n\"signature-input\";req: sig1=(\"@method\" \"@authority\" \"@path\" \"@query\" \"x-anis-date\");created=1789804800;expires=1789804860;keyid=\"3f2a9c14-8d6e-4b21-9f07-5c8ab2d61e43\";alg=\"ecdsa-p256-sha256\"\n\"@signature-params\": (\"@status\" \"content-digest\" \"x-request-id\" \"signature-input\";req);created=1789804800;keyid=\"partner-response-signing/v1-active\";alg=\"ecdsa-p256-sha256\""
+}

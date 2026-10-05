@@ -1,0 +1,42 @@
+{
+  "alphabet": "0123456789ABCDEFGHJKMNPQRSTVWXYZ",
+  "codeLength": 16,
+  "format": "XXXX-XXXX-XXXX-XXXX",
+  "derivation": "first 10 bytes of the 32-byte RFC 7638 SHA-256 thumbprint, big-endian, most significant bit first, 5 bits per character",
+  "normalisation": "trim; remove spaces and '-'; upper-case; O to 0, I to 1, L to 1; 16 characters -> compare with the code; otherwise compare the trimmed raw input with the full 43-character thumbprint",
+  "total": 4,
+  "vectors": [
+    {
+      "id": "SC-01",
+      "title": "Key with a 0 and a 1 in its code (every look-alike substitution has a positive case)",
+      "thumbprint": "rXZiBNBgFhRHHmLXeKSjpTK0euH9zQuZubOw0ubelnk",
+      "expectedCode": "NNV6-416G-C0B1-8HRY",
+      "inputs": 34,
+      "accepted": 17
+    },
+    {
+      "id": "SC-02",
+      "title": "The enrollment key of EP-01 (its thumbprint is the one EP-01 carries, and contains both '-' and '_')",
+      "thumbprint": "UjyME6IaGJZw9MTS-RUru6A9FRKtm8Bko_D5DLWmESw",
+      "expectedCode": "A8Y8-R4X2-38C9-CW7M",
+      "inputs": 27,
+      "accepted": 10
+    },
+    {
+      "id": "SC-03",
+      "title": "Key whose code starts with a 1",
+      "thumbprint": "DAmFZrDUUwJtqfrhIngj2Tdr1Iy5reOL8wEuzBZb0H4",
+      "expectedCode": "1G4R-ASNG-TH9G-4VD9",
+      "inputs": 31,
+      "accepted": 14
+    },
+    {
+      "id": "SC-04",
+      "title": "Key with a 1 in its code and a thumbprint containing '_'",
+      "thumbprint": "zloWkSsYu6MxY_zAylB_zfwR8kev39llTgkuTIPIFTk",
+      "expectedCode": "SSD1-D49B-32XT-6CB3",
+      "inputs": 31,
+      "accepted": 14
+    }
+  ]
+}

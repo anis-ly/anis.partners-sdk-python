@@ -1,0 +1,185 @@
+{
+  "id": "SC-01",
+  "title": "Key with a 0 and a 1 in its code (every look-alike substitution has a positive case)",
+  "description": "expectedCode is the first 80 bits of the 32-byte thumbprint, Crockford base32, grouped XXXX-XXXX-XXXX-XXXX. An entry matches when, after trimming, removing spaces and '-', upper-casing and mapping O to 0 and I and L to 1, it is 16 characters equal to the code; any other length is compared, trimmed but otherwise exactly as typed, with the full thumbprint.",
+  "publicJwk": {
+    "kty": "EC",
+    "crv": "P-256",
+    "x": "KpEKtjMs9wdka1QzBBzIbukX71gl2N36yrYufvktAEU",
+    "y": "cYho-fi98X3voIEv7lkMH3KjJMyFF3hbzc4_3IQd9GM"
+  },
+  "thumbprint": "rXZiBNBgFhRHHmLXeKSjpTK0euH9zQuZubOw0ubelnk",
+  "expectedCode": "NNV6-416G-C0B1-8HRY",
+  "inputs": [
+    {
+      "case": "exact code",
+      "entered": "NNV6-416G-C0B1-8HRY",
+      "matches": true
+    },
+    {
+      "case": "lower case",
+      "entered": "nnv6-416g-c0b1-8hry",
+      "matches": true
+    },
+    {
+      "case": "no dashes",
+      "entered": "NNV6416GC0B18HRY",
+      "matches": true
+    },
+    {
+      "case": "no dashes, lower case",
+      "entered": "nnv6416gc0b18hry",
+      "matches": true
+    },
+    {
+      "case": "spaces instead of dashes",
+      "entered": "NNV6 416G C0B1 8HRY",
+      "matches": true
+    },
+    {
+      "case": "surrounding spaces",
+      "entered": "  NNV6-416G-C0B1-8HRY  ",
+      "matches": true
+    },
+    {
+      "case": "dashes and spaces mixed",
+      "entered": "NNV6- 416G- - C0B1-8HRY",
+      "matches": true
+    },
+    {
+      "case": "dashes in other places",
+      "entered": "NNV-6416GC0B-18HRY",
+      "matches": true
+    },
+    {
+      "case": "letter O for zero",
+      "entered": "NNV6416GCOB18HRY",
+      "matches": true
+    },
+    {
+      "case": "letter O for zero, lower case",
+      "entered": "nnv6416gcob18hry",
+      "matches": true
+    },
+    {
+      "case": "letter I for one",
+      "entered": "NNV64I6GC0BI8HRY",
+      "matches": true
+    },
+    {
+      "case": "letter I for one, lower case",
+      "entered": "nnv64i6gc0bi8hry",
+      "matches": true
+    },
+    {
+      "case": "letter L for one",
+      "entered": "NNV64L6GC0BL8HRY",
+      "matches": true
+    },
+    {
+      "case": "letter L for one, lower case",
+      "entered": "nnv64l6gc0bl8hry",
+      "matches": true
+    },
+    {
+      "case": "look-alikes together",
+      "entered": "NNV64l6GCOBl8HRY",
+      "matches": true
+    },
+    {
+      "case": "letter O where the code has no zero",
+      "entered": "ONV6416GC0B18HRY",
+      "matches": false
+    },
+    {
+      "case": "first character wrong",
+      "entered": "PNV6416GC0B18HRY",
+      "matches": false
+    },
+    {
+      "case": "last character wrong",
+      "entered": "NNV6416GC0B18HRZ",
+      "matches": false
+    },
+    {
+      "case": "middle character wrong",
+      "entered": "NNV6416GD0B18HRY",
+      "matches": false
+    },
+    {
+      "case": "letter U (not in the alphabet) in place of a character",
+      "entered": "UNV6416GC0B18HRY",
+      "matches": false
+    },
+    {
+      "case": "15 characters",
+      "entered": "NNV6416GC0B18HR",
+      "matches": false
+    },
+    {
+      "case": "17 characters",
+      "entered": "NNV6416GC0B18HRYN",
+      "matches": false
+    },
+    {
+      "case": "code of a different key",
+      "entered": "A8Y8-R4X2-38C9-CW7M",
+      "matches": false
+    },
+    {
+      "case": "empty",
+      "entered": "",
+      "matches": false
+    },
+    {
+      "case": "only spaces",
+      "entered": "   ",
+      "matches": false
+    },
+    {
+      "case": "only dashes",
+      "entered": "----",
+      "matches": false
+    },
+    {
+      "case": "full thumbprint",
+      "entered": "rXZiBNBgFhRHHmLXeKSjpTK0euH9zQuZubOw0ubelnk",
+      "matches": true
+    },
+    {
+      "case": "full thumbprint with surrounding spaces",
+      "entered": "  rXZiBNBgFhRHHmLXeKSjpTK0euH9zQuZubOw0ubelnk  ",
+      "matches": true
+    },
+    {
+      "case": "full thumbprint, lower case",
+      "entered": "rxzibnbgfhrhhmlxeksjptk0euh9zquzubow0ubelnk",
+      "matches": false
+    },
+    {
+      "case": "full thumbprint, one character wrong",
+      "entered": "rXZiBNBgFhRHHmLXeKSjATK0euH9zQuZubOw0ubelnk",
+      "matches": false
+    },
+    {
+      "case": "full thumbprint, last character dropped",
+      "entered": "rXZiBNBgFhRHHmLXeKSjpTK0euH9zQuZubOw0ubeln",
+      "matches": false
+    },
+    {
+      "case": "full thumbprint with base64 padding",
+      "entered": "rXZiBNBgFhRHHmLXeKSjpTK0euH9zQuZubOw0ubelnk=",
+      "matches": false
+    },
+    {
+      "case": "full thumbprint of a different key",
+      "entered": "UjyME6IaGJZw9MTS-RUru6A9FRKtm8Bko_D5DLWmESw",
+      "matches": false
+    },
+    {
+      "case": "first ten thumbprint characters",
+      "entered": "rXZiBNBgFh",
+      "matches": false
+    }
+  ]
+}

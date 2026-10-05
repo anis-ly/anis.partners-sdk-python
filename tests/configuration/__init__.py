@@ -1,0 +1,1 @@
+"""Client setting validation tests."""
