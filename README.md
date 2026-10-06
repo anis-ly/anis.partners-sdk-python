@@ -2,6 +2,13 @@
 
 The Python client for the Anis Partner API. It signs every request, verifies every response, and gives each operation a typed result. The details that can cause duplicate purchases or expose unverified credentials are handled explicitly: caller-owned order ids, recovery outcomes, and response verification have no silent shortcuts.
 
+> **Disclaimer.** This SDK is an optional helper provided free of charge under the MIT License, "as is", without
+> warranty of any kind. Anis (Aniscom for Technical Services) accepts no responsibility or liability for its use or for
+> any loss arising from it. You remain responsible for your own integration — recording orders before you send them,
+> recovery, key custody and testing. The source code is public: read it to understand exactly what it does before you
+> rely on it. You do not need an SDK — you can integrate directly with the Anis Partner API using the documentation at
+> https://developers.anis.ly.
+
 ```bash
 pip install anis-partners
 # or
