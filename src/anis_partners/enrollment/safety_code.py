@@ -1,5 +1,7 @@
 """Provide a short key fingerprint staff and partners can compare during out-of-band enrollment approval."""
 
+import hmac
+
 from anis_partners._internal.base64url import decode
 
 
@@ -21,8 +23,6 @@ class SafetyCode:
     @classmethod
     def matches(cls, entered: str | None, thumbprint: str) -> bool:
         """Accept common Crockford aliases during phone read-back so formatting does not cause a false mismatch."""
-        import hmac
-
         raw = (entered or "").strip()
         normalized = raw.replace(" ", "").replace("-", "").upper().replace("O", "0").replace("I", "1").replace("L", "1")
         if len(normalized) == 16:

@@ -9,6 +9,7 @@ from enum import StrEnum
 
 from anis_partners._internal.http_headers import has_true_value
 from anis_partners.errors._codes import RETRYABLE_CODES, ErrorCode, parse_error_code
+from anis_partners.errors.base import AnisPartnersError
 from anis_partners.models.problem import Problem
 
 
@@ -45,7 +46,7 @@ def outcome_of(code: ErrorCode) -> OrderRefusalOutcome:
     return OrderRefusalOutcome.NOT_PLACED
 
 
-class AnisApiError(Exception):
+class AnisApiError(AnisPartnersError):
     """Carry machine-readable refusal data because titles and details are localized presentation."""
 
     def __init__(
@@ -83,6 +84,10 @@ class AnisApiError(Exception):
     def order_outcome(self) -> OrderRefusalOutcome:
         """Treat recorded refusals as closed and use the code for fresh refusals."""
         return OrderRefusalOutcome.NOT_PLACED if self.is_replayed else outcome_of(self.code)
+
+
+class MalformedResponseError(AnisPartnersError):
+    """Report a verified body that does not fit its model without exposing its contents or parser details."""
 
 
 class InsufficientBalanceError(AnisApiError):
@@ -182,9 +187,7 @@ def create_api_error(body: bytes, status: int, headers: Mapping[str, str]) -> An
     """Map a verified refusal, falling back to internal_error when its RFC body cannot be read."""
     replayed = has_true_value(_header(headers, "Idempotency-Replayed"))
     retry_after_value = _header(headers, "Retry-After")
-    retry_after = None
-    if retry_after_value is not None and retry_after_value and all("0" <= char <= "9" for char in retry_after_value):
-        retry_after = timedelta(seconds=int(retry_after_value))
+    retry_after = parse_retry_after(retry_after_value)
     try:
         problem = Problem.from_json(body)
     except (ValueError, UnicodeDecodeError, json.JSONDecodeError):
@@ -193,6 +196,12 @@ def create_api_error(body: bytes, status: int, headers: Mapping[str, str]) -> An
     return error_type(problem, status, retry_after, replayed)
 
 
-def empty_body_error(status: int) -> AnisApiError:
-    """Turn a verified success with no JSON value into an internal error instead of a fake model."""
-    return AnisApiError(Problem(type="about:blank", title="Empty body", status=status, code="internal_error"), status)
+def parse_retry_after(value: str | None) -> timedelta | None:
+    """Accept bounded whole seconds so zero remains meaningful and huge values cannot overflow."""
+    if value is None or not value.isascii() or not value.isdecimal():
+        return None
+    significant = value.lstrip("0") or "0"
+    if len(significant) > 10:
+        return None
+    seconds = int(significant)
+    return timedelta(seconds=seconds) if seconds <= 2_147_483_647 else None

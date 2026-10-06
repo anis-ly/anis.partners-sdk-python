@@ -20,7 +20,7 @@ class PartnerRequestSignatureBase:
         if expires - created > cls.MAX_LIFETIME_SECONDS:
             raise ValueError("A Partner signature may live at most 300 seconds.")
         if nonce is not None and (
-            not nonce or any(char in '"\\' or ord(char) < 32 or ord(char) == 127 for char in nonce)
+            not nonce or any(char in '"\\' or ord(char) < 32 or 0x7F <= ord(char) <= 0x9F for char in nonce)
         ):
             raise ValueError("A nonce must be a non-empty structured-field string without quotes or controls.")
         quoted = " ".join(f'"{component}"' for component in components)

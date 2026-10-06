@@ -14,6 +14,8 @@ class _Representation(TypedDict, total=False):
     publicCode: str
     publicDocumentation: bool
     retryable: bool
+    httpStatus: int
+    retryGuidance: str
 
 
 class _Catalogue(TypedDict):
@@ -23,6 +25,18 @@ class _Catalogue(TypedDict):
 def _member(code: str) -> str:
     """Use stable uppercase names while keeping the exact wire spelling as each value."""
     return re.sub(r"[^A-Z0-9]+", "_", code.upper()).strip("_")
+
+
+def _literal(code: str, value: str) -> str:
+    """Wrap long generated guidance without changing its exact runtime string."""
+    prefix_length = len(f"    ErrorCode.{_member(code)}: ")
+    encoded = json.dumps(value, ensure_ascii=False)
+    if prefix_length + len(encoded) + 1 <= 120:
+        return encoded
+    parts = [json.dumps(value[index : index + 50], ensure_ascii=False) for index in range(0, len(value), 50)]
+    return (
+        '"".join(\n        (\n            ' + "\n            ".join(part + "," for part in parts) + "\n        )\n    )"
+    )
 
 
 def render(catalogue_path: Path = CATALOGUE) -> str:
@@ -46,14 +60,21 @@ def render(catalogue_path: Path = CATALOGUE) -> str:
         "",
         "",
         "class ErrorCode(StrEnum):",
-        '    """Identify API refusals by stable wire code rather than localized copy."""',
+        '    """Identify API refusals by stable wire code and recovery guidance."""',
         "",
         '    UNKNOWN = "unknown"',
     ]
     for code in sorted(public):
         lines.append(f'    {_member(code)} = "{code}"')
     retryable = sorted(code for code, item in public.items() if item.get("retryable") is True)
-    lines.extend(["", "", "RETRYABLE_CODES: frozenset[ErrorCode] = frozenset(", "    {"])
+    lines.extend(["", "", "HTTP_STATUS: dict[ErrorCode, int] = {"])
+    lines.extend(f"    ErrorCode.{_member(code)}: {item['httpStatus']}," for code, item in sorted(public.items()))
+    lines.extend(["}", "", "", "RETRY_GUIDANCE: dict[ErrorCode, str] = {"])
+    lines.extend(
+        f"    ErrorCode.{_member(code)}: {_literal(code, item['retryGuidance'])},"
+        for code, item in sorted(public.items())
+    )
+    lines.extend(["}", "", "", "RETRYABLE_CODES: frozenset[ErrorCode] = frozenset(", "    {"])
     lines.extend(f"        ErrorCode.{_member(code)}," for code in retryable)
     lines.extend(["    }", ")", "", "", "_BY_WIRE: dict[str, ErrorCode] = {"])
     lines.extend(f'    "{code}": ErrorCode.{_member(code)},' for code in sorted(public))

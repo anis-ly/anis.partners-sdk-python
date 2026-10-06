@@ -4,9 +4,10 @@ from dataclasses import dataclass
 from dataclasses import field as dataclass_field
 from datetime import datetime, timedelta
 from enum import StrEnum
-from typing import TYPE_CHECKING, TypeAlias
+from typing import TypeAlias
 from uuid import UUID
 
+from anis_partners.errors.base import AnisPartnersError
 from anis_partners.models._json import (
     boolean,
     field,
@@ -20,9 +21,6 @@ from anis_partners.models._json import (
 )
 from anis_partners.models.cards import RevealedCredential
 from anis_partners.models.money import Money
-
-if TYPE_CHECKING:
-    from anis_partners.errors import AnisApiError
 
 
 class OrderStatus(StrEnum):
@@ -178,7 +176,7 @@ class OrderNotPlaced:
     """Represent a final refusal so the caller can fix it before creating a new operation id."""
 
     operation_id: UUID
-    refusal: "AnisApiError"
+    refusal: AnisPartnersError
 
 
 OrderResult: TypeAlias = OrderCompleted | OrderProcessing | OrderReplayed | OrderNotPlaced | OrderOutcomeUnknown

@@ -1,9 +1,10 @@
 """Exception raised when a response is unsafe to return to the caller."""
 
+from anis_partners.errors.base import AnisPartnersError
 from anis_partners.verification.failures import ResponseVerificationFailure
 
 
-class UnverifiableResponseError(RuntimeError):
+class UnverifiableResponseError(AnisPartnersError):
     """Prevent callers from treating an unverified response as usable and expose only a safe refusal reason."""
 
     def __init__(self, failure: ResponseVerificationFailure) -> None:

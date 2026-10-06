@@ -1,5 +1,7 @@
 """Settings binding tests that fail before client creation or order submission."""
 
+from typing import cast
+
 import pytest
 
 from anis_partners.options import AcceptLanguage, ClientOptions
@@ -26,7 +28,7 @@ def test_options_bind_from_the_anis_partners_section() -> None:
 
 
 def test_options_bind_snake_case_without_a_section_wrapper() -> None:
-    """Support native Python settings without requiring a .NET-style configuration container."""
+    """Support native Python settings without requiring a cross-runtime configuration container."""
     options = ClientOptions.from_mapping(
         {
             "authority": "http://localhost:8080",
@@ -88,3 +90,65 @@ def test_invalid_mapping_duration_names_the_python_attribute() -> None:
     """Identify the Python setting that must be corrected when a mapping value cannot be parsed."""
     with pytest.raises(ValueError, match=r"ClientOptions.timeout_seconds"):
         ClientOptions.from_mapping({"authority": "https://partners.example", "timeout_seconds": "soon"})
+
+
+@pytest.mark.parametrize("value", [True, 30.0])
+def test_signature_lifetime_requires_an_actual_integer(value: object) -> None:
+    """Reject bool and fractional settings before they can create malformed signature parameters."""
+    with pytest.raises(ValueError, match=r"ClientOptions\.signature_lifetime_seconds"):
+        ClientOptions("https://partners.example", signature_lifetime_seconds=cast(int, value))
+
+
+@pytest.mark.parametrize("value", [True, 600.0])
+def test_cache_lifetime_requires_an_actual_integer(value: object) -> None:
+    """Keep host-cache TTL arguments integral and avoid bool-as-int configuration mistakes."""
+    with pytest.raises(ValueError, match=r"ClientOptions\.signing_key_cache_seconds"):
+        ClientOptions("https://partners.example", signing_key_cache_seconds=cast(int, value))
+
+
+@pytest.mark.parametrize("timeout", [float("nan"), float("inf"), True, "30"])
+def test_timeout_requires_finite_numeric_seconds(timeout: object) -> None:
+    """Reject timeout values that cannot safely bound an HTTP request."""
+    with pytest.raises(ValueError, match=r"ClientOptions\.timeout_seconds"):
+        ClientOptions("https://partners.example", timeout_seconds=cast(float, timeout))
+
+
+@pytest.mark.parametrize(
+    "authority",
+    [
+        "https://user:password@partners.example",
+        "https://partners.example:99999",
+        "https://partners.example/path",
+        "https://bücher.example",
+    ],
+)
+def test_authority_rejects_userinfo_bad_ports_paths_and_unicode_hosts(authority: str) -> None:
+    """Prevent HTTP Basic credentials, invalid Host forms, and mismatched canonical authorities."""
+    with pytest.raises(ValueError, match=r"ClientOptions\.authority"):
+        ClientOptions(authority)
+
+
+def test_options_require_accept_language_enum_at_construction() -> None:
+    """Refuse strings that would fail later while building a signed request."""
+    with pytest.raises(ValueError, match=r"ClientOptions\.accept_language"):
+        ClientOptions("https://partners.example", accept_language=cast(AcceptLanguage, "en"))
+
+
+def test_shared_duration_binding_reads_day_prefixed_and_negative_forms() -> None:
+    """Parse shared settings durations without dropping days or the sign."""
+    options = ClientOptions.from_mapping(
+        {
+            "authority": "https://partners.example",
+            "signing_key_cache_seconds": "1.00:00:00",
+        }
+    )
+    assert options.signing_key_cache_seconds == 86_400
+    with pytest.raises(ValueError, match="timeout_seconds"):
+        ClientOptions.from_mapping({"authority": "https://partners.example", "timeout_seconds": "-00:00:05"})
+
+
+@pytest.mark.parametrize("value", ["00:61:00", "1.24:00:00", "999999999999999999999.00:00:00"])
+def test_shared_duration_binding_rejects_out_of_range_time_components(value: str) -> None:
+    """Refuse duration strings that cannot be represented by the shared settings format."""
+    with pytest.raises(ValueError, match=r"ClientOptions\.timeout_seconds"):
+        ClientOptions.from_mapping({"authority": "https://partners.example", "timeout_seconds": value})

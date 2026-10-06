@@ -21,7 +21,7 @@ ECDSA libraries commonly return ASN.1 DER signatures, which have variable length
 
 Each signed request covers its method, authority, path, query, date, and profile-specific fields. Mutation bodies are bound using `Content-Digest`; a nonce prevents replay, and an order carries the caller's idempotency key. Every response is verified against Anis's published signing keys before its body is parsed. There is no option to disable verification. If verification fails, the body is discarded; an order answer that cannot be verified has an unknown outcome.
 
-The default signature lifetime is 60 seconds and the supported setting is 1–60 seconds. Use an accurate UTC system clock. The server's request admission window is wider, but accepting an old response can lose credentials after a sale; the SDK keeps its response freshness window bounded.
+The default signature lifetime is 60 seconds and the supported setting is 1–60 seconds. Use an accurate UTC system clock. The server's request admission window is wider, but accepting an old response can lose credentials after a sale; the SDK keeps its response freshness window bounded. Plain HTTP is permitted only for loopback testing; use HTTPS for every network authority.
 
 ## Enrollment
 
@@ -29,7 +29,7 @@ Protect the private half before submitting a public key. After proof, an Anis st
 
 ## Rotation
 
-Keep the old key available while a replacement is enrolled and confirmed. The SDK fetches the public key document and refreshes it once when a response uses an unknown key id. Its default in-process cache is ten minutes; a host can supply a shared `KeyDocumentCache` with a bounded TTL. Do not delete an old private key until Anis has completed the rotation and no process still needs it.
+Anis staff start a rotation, then you enroll a replacement key and complete the safety-code check. During the overlap, requests may be signed by either the old or replacement key; keep both private keys available until Anis confirms completion and every worker has moved to the replacement. A revoked key is refused as `invalid_credentials`. The SDK fetches the public key document and refreshes it once when a response uses an unknown key id. Its default in-process cache is ten minutes; a host can supply a shared `KeyDocumentCache` with a bounded TTL. Rotation is managed by key state at Anis, not by a local environment switch.
 
 ## Card credentials
 

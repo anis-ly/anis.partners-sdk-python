@@ -55,3 +55,28 @@ def test_money_accepts_negative_amounts_for_order_guards_to_reject_as_prices() -
 def test_money_pads_allowed_scale_without_rounding() -> None:
     """Pad legal precision for the wire while leaving the represented amount unchanged."""
     assert Money(Decimal("10.5"), "LYD").to_wire_amount() == "10.500"
+
+
+def test_money_normalizes_negative_zero_instead_of_writing_negative_zero() -> None:
+    """Keep zero canonical so signed money text cannot have two spellings for the same value."""
+    assert Money(Decimal("-0.000"), "LYD").to_wire_amount() == "0.000"
+    with pytest.raises(ValueError, match="Negative zero"):
+        Money.from_json('{"amount":"-0.000","currency":"LYD"}')
+
+
+def test_money_uses_fixed_decimal_context_independent_of_the_host() -> None:
+    """Prevent a host's Decimal precision setting from changing SDK prices or multiplication."""
+    from decimal import getcontext
+
+    original = getcontext().prec
+    try:
+        getcontext().prec = 6
+        assert Money(Decimal("1234.567"), "LYD").multiply(3).to_wire_amount() == "3703.701"
+    finally:
+        getcontext().prec = original
+
+
+def test_money_converts_decimal_overflow_into_value_error() -> None:
+    """Turn unrepresentable network amounts into a stable model refusal rather than InvalidOperation."""
+    with pytest.raises(ValueError, match="supported decimal range"):
+        Money.from_json('{"amount":"999999999999999999999999999999.000","currency":"LYD"}')

@@ -4,7 +4,7 @@ import json
 from dataclasses import fields
 from pathlib import Path
 
-from anis_partners.errors import ErrorCode
+from anis_partners.errors import HTTP_STATUS, RETRY_GUIDANCE, ErrorCode
 from anis_partners.models import EnrollmentKeyResult
 from anis_partners.operations import PARTNER_ROUTES
 from anis_partners.signing.signature_profile import SignatureProfile
@@ -93,8 +93,40 @@ def test_key_submission_answer_model_has_exactly_the_published_members() -> None
 
 
 def test_generated_error_codes_equal_the_generator_output() -> None:
-    """Replace numeric enum history checks with exact generated-file parity for string codes."""
+    """Detect stale generated values without losing deterministic source formatting."""
     assert OUTPUT.read_text(encoding="utf-8") == render()
+
+
+def test_generated_error_status_and_guidance_match_the_catalogue() -> None:
+    """Give partners correct recovery context while detecting stale generated error metadata."""
+    catalogue = _contract("error-catalogue.json")
+    representations = catalogue["representations"]
+    assert isinstance(representations, list)
+    unique_entries = {
+        entry["publicCode"]: entry
+        for entry in representations
+        if isinstance(entry, dict) and entry.get("publicDocumentation") is True
+    }
+    for entry in unique_entries.values():
+        code = ErrorCode(entry["publicCode"])
+        assert HTTP_STATUS[code] == entry["httpStatus"]
+        assert RETRY_GUIDANCE[code] == entry["retryGuidance"]
+
+
+def test_purchase_not_allowed_catalogue_collision_remains_visible() -> None:
+    """Keep the contract's code/status conflict explicit instead of silently rewriting its source."""
+    catalogue = _contract("error-catalogue.json")
+    representations = catalogue["representations"]
+    assert isinstance(representations, list)
+    matches = [
+        entry
+        for entry in representations
+        if isinstance(entry, dict)
+        and entry.get("publicCode") == "purchase_not_allowed"
+        and entry.get("publicDocumentation") is True
+    ]
+    assert [entry["httpStatus"] for entry in matches] == [403, 409]
+    assert HTTP_STATUS[ErrorCode.PURCHASE_NOT_ALLOWED] == 409
 
 
 def test_covered_component_profiles_match_the_contract_description() -> None:

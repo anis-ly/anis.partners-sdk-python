@@ -10,9 +10,11 @@ from uuid import UUID
 import httpx
 
 from anis_partners._internal.clock import Clock
+from anis_partners._internal.uuid import parse as parse_uuid
 from anis_partners.enrollment.enrollment_proof import EnrollmentProof
 from anis_partners.enrollment.key_thumbprint import compute as compute_thumbprint
 from anis_partners.enrollment.safety_code import SafetyCode
+from anis_partners.errors import AnisPartnersError
 from anis_partners.models import (
     EnrollmentKeyRequest,
     EnrollmentKeyResult,
@@ -22,21 +24,26 @@ from anis_partners.models import (
 )
 from anis_partners.operations.transport import AsyncTransport, RequestCore, RequestSpec, SyncTransport
 from anis_partners.options import ClientOptions
-from anis_partners.signing.p256_signer import P256Signer
-from anis_partners.verification import (
-    AsyncPartnerResponseVerifier,
-    AsyncSigningKeySource,
-    PartnerJwk,
-    PartnerResponseVerifier,
-    SigningKeySource,
-)
+from anis_partners.signing.p256_signer import AsyncP256Signer, P256Signer
 from anis_partners.verification.async_http_signing_key_source import AsyncHttpSigningKeySource
 from anis_partners.verification.http_signing_key_source import HttpSigningKeySource
+from anis_partners.verification.partner_jwk import PartnerJwk
+from anis_partners.verification.partner_response_verifier import (
+    AsyncPartnerResponseVerifier,
+    PartnerResponseVerifier,
+)
+from anis_partners.verification.signing_key_source import AsyncSigningKeySource, SigningKeySource
 
 T = TypeVar("T")
 
 
-class EnrollmentKeyMismatchError(ValueError):
+def _validate_enrollment_token(token: str) -> None:
+    """Reject token bytes HTTP headers cannot safely carry before passing them to the transport."""
+    if not isinstance(token, str) or not token or any(not 0x21 <= ord(character) <= 0x7E for character in token):
+        raise ValueError("Enrollment token must contain only visible ASCII characters.")
+
+
+class EnrollmentKeyMismatchError(AnisPartnersError):
     """Stop if a mismatched thumbprint would otherwise enroll the wrong signing credential."""
 
     def __init__(self, local_thumbprint: str, server_thumbprint: str | None) -> None:
@@ -77,16 +84,18 @@ class AnisEnrollmentClient:
         http_client: httpx.Client | None = None,
         keys: SigningKeySource | None = None,
         clock: Clock | None = None,
+        timeout_seconds: float = 30,
     ) -> None:
         """Use an unsigned request path because no partner key exists yet; injected transport stays host-owned."""
-        if not enrollment_token or not enrollment_token.strip():
-            raise ValueError("An enrollment token is required.")
-        self.invitation_id = invitation_id if isinstance(invitation_id, UUID) else UUID(invitation_id)
+        _validate_enrollment_token(enrollment_token)
+        self.invitation_id = parse_uuid(invitation_id, "invitation_id")
         self._token = enrollment_token
         self._owns_http = http_client is None
-        self._http = http_client or httpx.Client()
-        options = ClientOptions(authority)
-        source = keys or HttpSigningKeySource(self._http, authority, options.signing_key_cache_seconds)
+        options = ClientOptions(authority, timeout_seconds=timeout_seconds)
+        self._http = http_client or httpx.Client(timeout=options.timeout_seconds)
+        source = keys or HttpSigningKeySource(
+            self._http, options.authority, options.signing_key_cache_seconds, timeout_seconds=options.timeout_seconds
+        )
         self._core = RequestCore(options, None, clock)
         self._transport = SyncTransport(self._core, self._http, PartnerResponseVerifier(source, clock))
 
@@ -96,6 +105,7 @@ class AnisEnrollmentClient:
 
     def close(self) -> None:
         """Close only the internally created HTTP client."""
+        self._core.closed = True
         if self._owns_http:
             self._http.close()
 
@@ -179,16 +189,18 @@ class AsyncAnisEnrollmentClient:
         http_client: httpx.AsyncClient | None = None,
         keys: AsyncSigningKeySource | None = None,
         clock: Clock | None = None,
+        timeout_seconds: float = 30,
     ) -> None:
         """Keep the async host transport and key source so enrollment can run inside an existing event loop."""
-        if not enrollment_token or not enrollment_token.strip():
-            raise ValueError("An enrollment token is required.")
-        self.invitation_id = invitation_id if isinstance(invitation_id, UUID) else UUID(invitation_id)
+        _validate_enrollment_token(enrollment_token)
+        self.invitation_id = parse_uuid(invitation_id, "invitation_id")
         self._token = enrollment_token
         self._owns_http = http_client is None
-        self._http = http_client or httpx.AsyncClient()
-        options = ClientOptions(authority)
-        source = keys or AsyncHttpSigningKeySource(self._http, authority, options.signing_key_cache_seconds)
+        options = ClientOptions(authority, timeout_seconds=timeout_seconds)
+        self._http = http_client or httpx.AsyncClient(timeout=options.timeout_seconds)
+        source = keys or AsyncHttpSigningKeySource(
+            self._http, options.authority, options.signing_key_cache_seconds, timeout_seconds=options.timeout_seconds
+        )
         self._core = RequestCore(options, None, clock)
         self._transport = AsyncTransport(self._core, self._http, AsyncPartnerResponseVerifier(source, clock))
 
@@ -198,6 +210,7 @@ class AsyncAnisEnrollmentClient:
 
     async def aclose(self) -> None:
         """Close the internally created HTTP client without taking ownership of injected transports."""
+        self._core.closed = True
         if self._owns_http:
             await self._http.aclose()
 
@@ -254,14 +267,14 @@ class AsyncAnisEnrollmentClient:
             "POST", route, f"/v1/enrollments/{self.invitation_id}/proof", request, EnrollmentStatus.from_json
         )
 
-    async def prove(self, submitted: EnrollmentKeyResult, signer: P256Signer) -> EnrollmentStatus:
+    async def prove(self, submitted: EnrollmentKeyResult, signer: P256Signer | AsyncP256Signer) -> EnrollmentStatus:
         """Sign and submit the proof message while keeping private key custody with the partner."""
         if submitted.challenge is None or submitted.thumbprint is None or submitted.challenge_generation is None:
             raise ValueError("The key submission result is missing proof fields.")
         message = EnrollmentProof.proof_message(
             str(submitted.key_id), submitted.challenge_generation, submitted.challenge, submitted.thumbprint
         )
-        signature = EnrollmentProof.proof_signature(message, signer)
+        signature = await EnrollmentProof.proof_signature_async(message, signer)
         return await self.submit_proof(
             EnrollmentProofRequest(submitted.key_id, submitted.challenge_generation, signature)
         )

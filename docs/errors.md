@@ -26,9 +26,9 @@ The error exposes `code` (the known `ErrorCode`, or `UNKNOWN`), `raw_code` (the 
 
 Order refusals are values, not thrown API exceptions: a closed refusal is in `OrderNotPlaced.refusal`; an uncertain refusal is the `cause` of `OrderOutcomeUnknown`. Read refusals raise their typed exception. A recorded refusal with the replay marker is closed and returns `OrderNotPlaced`.
 
-## Public error catalogue
+## Error catalogue
 
-The table is generated from `contracts/error-catalogue.json`; `Retryable` describes the code and does not authorize a fresh order attempt. “May have placed” means an order must be resumed with the same operation id.
+The SDK's `ErrorCode` values come from `contracts/error-catalogue.json`; the table below describes their public mapping. `Retryable` describes a code and does not authorize a fresh order attempt. “May have placed” means an order must be resumed with the same operation id.
 
 | Code | HTTP | Typed error | Retryable | Order may have placed? |
 |---|---:|---|:---:|:---:|
@@ -72,6 +72,10 @@ The table is generated from `contracts/error-catalogue.json`; `Retryable` descri
 | unknown code | varies | `AnisApiError` | no | yes |
 
 The SDK also raises `EnrollmentKeyMismatchError` when the key thumbprint Anis returns differs from the submitted key. It is a local integrity error, not an API refusal.
+
+Catch `AnisPartnersError` to handle errors raised by the SDK itself. API refusals derive from it as `AnisApiError`; `RequestSigningError`, `UnverifiableResponseError`, `EnrollmentKeyMismatchError`, `KeyDocumentUnavailableError`, and `MalformedResponseError` do too. A malformed verified answer reports only the response model name: its body and JSON parser detail may contain card codes or other private values. Send the route, operation id where relevant, and verified request id to [support@anis.ly](mailto:support@anis.ly); never send card codes, tokens, or private keys.
+
+Invalid caller arguments raise `ValueError` or `TypeError` directly. For example, invalid UUID arguments name their Python parameter, and invalid order quantity or price arithmetic identifies `quantity`, `expected_unit_price`, or `expected_total`. `RequestSigningError` is reserved for request preparation failures after arguments pass validation, such as signer failures or serialization problems; neither kind is an unknown order outcome.
 
 ## Unverifiable answers are discarded
 

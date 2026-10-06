@@ -13,7 +13,11 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
 
 from anis_partners import EnrollmentRefusedError
-from anis_partners.enrollment.client import AnisEnrollmentClient, EnrollmentKeyMismatchError
+from anis_partners.enrollment.client import (
+    AnisEnrollmentClient,
+    AsyncAnisEnrollmentClient,
+    EnrollmentKeyMismatchError,
+)
 from anis_partners.enrollment.enrollment_proof import EnrollmentProof
 from anis_partners.enrollment.key_thumbprint import compute
 from anis_partners.models import EnrollmentKeyRequest, EnrollmentKeyResult, EnrollmentProofRequest, EnrollmentStatus
@@ -42,6 +46,21 @@ def _jwk() -> PartnerJwk:
 
     point = ec.generate_private_key(ec.SECP256R1()).public_key().public_numbers()
     return PartnerJwk("EC", "P-256", encode(point.x.to_bytes(32, "big")), encode(point.y.to_bytes(32, "big")))
+
+
+@pytest.mark.parametrize("value", ["not-a-uuid", 42])
+def test_enrollment_invitation_id_is_a_direct_argument_error(value: object) -> None:
+    """Name an invalid invitation id as a caller mistake before enrollment creates a request."""
+    with pytest.raises((ValueError, TypeError), match="invitation_id"):
+        AnisEnrollmentClient("https://partners.test", cast(UUID | str, value), TOKEN)
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("value", ["not-a-uuid", 42])
+async def test_async_enrollment_invitation_id_is_a_direct_argument_error(value: object) -> None:
+    """Apply the same named UUID argument validation before the async enrollment transport is created."""
+    with pytest.raises((ValueError, TypeError), match="invitation_id"):
+        AsyncAnisEnrollmentClient("https://partners.test", cast(UUID | str, value), TOKEN)
 
 
 def test_submit_key_sends_only_public_jwk_with_enrollment_authorization() -> None:
@@ -73,6 +92,27 @@ def test_submit_key_sends_only_public_jwk_with_enrollment_authorization() -> Non
     finally:
         client.close()
         http.close()
+
+
+def test_enrollment_client_rejects_non_loopback_http_authority() -> None:
+    """Protect the unsigned enrollment token and public key from interception by requiring HTTPS off loopback."""
+    with pytest.raises(ValueError, match="HTTPS"):
+        AnisEnrollmentClient("http://partners.example", INVITATION, TOKEN)
+
+
+@pytest.mark.parametrize("client_type", [AnisEnrollmentClient, AsyncAnisEnrollmentClient], ids=["sync", "async"])
+def test_enrollment_client_rejects_tokens_outside_visible_ascii_without_exposing_them(
+    client_type: type[AnisEnrollmentClient] | type[AsyncAnisEnrollmentClient],
+) -> None:
+    """Reject unsafe authorization header characters before HTTPX can include the token in an error."""
+    bad_header_value = "TOKEN\r\n"
+    with pytest.raises(ValueError, match="only visible ASCII characters") as caught:
+        client_type("https://partners.test", INVITATION, bad_header_value)
+
+    assert str(caught.value) == "Enrollment token must contain only visible ASCII characters."
+    assert caught.value.__cause__ is None
+    assert caught.value.__context__ is None
+    assert bad_header_value not in str(caught.value)
 
 
 def test_submit_key_stops_on_a_mismatched_server_thumbprint() -> None:
@@ -117,6 +157,77 @@ async def test_async_enrollment_uses_the_same_verified_unsigned_request_flow() -
         assert request.headers["Authorization"] == f"Enrollment {TOKEN}"
         assert "Signature" not in request.headers
         assert wire.key_document_requests == 1
+    await http.aclose()
+
+
+@pytest.mark.anyio
+async def test_async_enrollment_stops_on_a_mismatched_key_thumbprint() -> None:
+    """Refuse an async challenge when Anis reports a thumbprint for a different public key."""
+    public_jwk = _jwk()
+    wire = SignedMockWire(
+        lambda request: WireAnswer(
+            body=b'{"keyId":"c31ce82f-2a51-4f86-a1cc-3f5dc4b8f021","thumbprint":"wrong","challenge":"private-challenge","challengeGeneration":1}'
+        )
+    )
+    http = cast(httpx.AsyncClient, wire.client(async_client=True))
+    async with AsyncAnisEnrollmentClient("https://partners.test", INVITATION, TOKEN, http_client=http) as client:
+        with pytest.raises(EnrollmentKeyMismatchError) as caught:
+            await client.submit_key(
+                EnrollmentKeyRequest(public_jwk, datetime.now(UTC), datetime.now(UTC) + timedelta(days=365))
+            )
+        assert caught.value.server_thumbprint == "wrong"
+        assert "private-challenge" not in str(caught.value)
+    await http.aclose()
+
+
+@pytest.mark.anyio
+async def test_async_enrollment_proves_the_submitted_key_generation() -> None:
+    """Sign and submit the current challenge generation through the async enrollment flow."""
+    public_jwk = _jwk()
+    thumbprint = compute(public_jwk)
+    answers = [
+        WireAnswer(
+            body=json.dumps(
+                {
+                    "keyId": str(INVITATION),
+                    "thumbprint": thumbprint,
+                    "challenge": "async-proof-challenge",
+                    "challengeGeneration": 3,
+                }
+            ).encode()
+        ),
+        WireAnswer(
+            body=b'{"keyId":"3f2a9c14-8d6e-4b21-9f07-5c8ab2d61e43","challengeGeneration":3,"proofState":"accepted","approvalState":"pendingApproval","state":"pendingApproval"}'
+        ),
+    ]
+    wire = SignedMockWire(lambda request: answers.pop(0))
+    http = cast(httpx.AsyncClient, wire.client(async_client=True))
+    async with AsyncAnisEnrollmentClient("https://partners.test", INVITATION, TOKEN, http_client=http) as client:
+        submitted = await client.submit_key(
+            EnrollmentKeyRequest(public_jwk, datetime.now(UTC), datetime.now(UTC) + timedelta(days=365))
+        )
+        status = await client.prove(submitted, _ProofSigner())
+        assert status.proof_state == "accepted"
+        proof_request = next(item for item in wire.requests if item.url.path.endswith("/proof"))
+        assert json.loads(proof_request.content)["challengeGeneration"] == 3
+        assert proof_request.headers["Authorization"] == f"Enrollment {TOKEN}"
+    await http.aclose()
+
+
+@pytest.mark.anyio
+async def test_async_enrollment_refusal_remains_a_typed_refusal() -> None:
+    """Preserve a verified async proof refusal as an enrollment API error for callers to handle."""
+    wire = SignedMockWire(
+        lambda request: WireAnswer(
+            409,
+            b'{"type":"https://developers.anis.ly/errors/challenge-expired","title":"expired","status":409,"code":"challenge_expired"}',
+        )
+    )
+    http = cast(httpx.AsyncClient, wire.client(async_client=True))
+    async with AsyncAnisEnrollmentClient("https://partners.test", INVITATION, TOKEN, http_client=http) as client:
+        with pytest.raises(EnrollmentRefusedError) as failure:
+            await client.submit_proof(EnrollmentProofRequest(INVITATION, 1, "A" * 86))
+        assert failure.value.code.value == "challenge_expired"
     await http.aclose()
 
 
@@ -170,7 +281,9 @@ def test_enrollment_proof_refuses_non_p1363_signatures_before_sending() -> None:
         def sign(self, data: bytes) -> bytes:
             return b"x" * 71
 
-    with pytest.raises(ValueError, match="exactly 64-byte P1363"):
+    from anis_partners.signing.errors import RequestSigningError
+
+    with pytest.raises(RequestSigningError, match="could not be signed"):
         EnrollmentProof.proof_signature(b"proof", cast(P256Signer, DerSigner()))
 
 
@@ -265,9 +378,3 @@ def test_incomplete_or_other_curve_jwks_cannot_be_fingerprinted() -> None:
         compute(PartnerJwk("EC", "P-384", public_jwk.x, public_jwk.y))
     with pytest.raises(ValueError, match="32-byte"):
         compute(PartnerJwk("EC", "P-256", "AA", public_jwk.y))
-
-
-@pytest.fixture
-def anyio_backend() -> str:
-    """Keep async transport tests on asyncio to match the supported SDK runtime."""
-    return "asyncio"

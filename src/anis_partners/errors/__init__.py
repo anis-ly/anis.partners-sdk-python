@@ -1,6 +1,6 @@
 """Typed API errors so partner code can branch on stable codes rather than localized messages."""
 
-from anis_partners.errors._codes import RETRYABLE_CODES, ErrorCode, parse_error_code
+from anis_partners.errors._codes import HTTP_STATUS, RETRY_GUIDANCE, RETRYABLE_CODES, ErrorCode, parse_error_code
 from anis_partners.errors.anis_api_error import (
     AnisApiError,
     AuthorizationError,
@@ -10,6 +10,7 @@ from anis_partners.errors.anis_api_error import (
     InsufficientBalanceError,
     InvalidCredentialsError,
     LimitExceededError,
+    MalformedResponseError,
     OrderRefusalOutcome,
     OutOfStockError,
     PriceChangedError,
@@ -18,14 +19,18 @@ from anis_partners.errors.anis_api_error import (
     ResourceNotFoundError,
     ValidationFailedError,
     create_api_error,
-    empty_body_error,
     outcome_of,
+    parse_retry_after,
     refused_at_the_door,
 )
+from anis_partners.errors.base import AnisPartnersError, KeyDocumentUnavailableError
 
 __all__ = [
+    "HTTP_STATUS",
     "RETRYABLE_CODES",
+    "RETRY_GUIDANCE",
     "AnisApiError",
+    "AnisPartnersError",
     "AuthorizationError",
     "DependencyUnavailableError",
     "EnrollmentRefusedError",
@@ -33,7 +38,9 @@ __all__ = [
     "IdempotencyConflictError",
     "InsufficientBalanceError",
     "InvalidCredentialsError",
+    "KeyDocumentUnavailableError",
     "LimitExceededError",
+    "MalformedResponseError",
     "OrderRefusalOutcome",
     "OutOfStockError",
     "PriceChangedError",
@@ -42,8 +49,8 @@ __all__ = [
     "ResourceNotFoundError",
     "ValidationFailedError",
     "create_api_error",
-    "empty_body_error",
     "outcome_of",
     "parse_error_code",
+    "parse_retry_after",
     "refused_at_the_door",
 ]

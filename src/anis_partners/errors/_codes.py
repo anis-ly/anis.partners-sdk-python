@@ -4,7 +4,7 @@ from enum import StrEnum
 
 
 class ErrorCode(StrEnum):
-    """Identify API refusals by stable wire code rather than localized copy."""
+    """Identify API refusals by stable wire code and recovery guidance."""
 
     UNKNOWN = "unknown"
     ACCOUNT_INACTIVE = "account_inactive"
@@ -44,6 +44,246 @@ class ErrorCode(StrEnum):
     WALLET_DISABLED = "wallet_disabled"
     WALLET_EXPIRED = "wallet_expired"
     WALLET_NOT_GRANTED = "wallet_not_granted"
+
+
+HTTP_STATUS: dict[ErrorCode, int] = {
+    ErrorCode.ACCOUNT_INACTIVE: 403,
+    ErrorCode.ALLOWED_DEBT_CONSENT_REQUIRED: 402,
+    ErrorCode.BINDING_NOT_AUTHORIZED: 403,
+    ErrorCode.BUSINESS_SUBSCRIPTION_REQUIRED: 409,
+    ErrorCode.CARD_NOT_FOUND: 404,
+    ErrorCode.CARD_UNAVAILABLE: 409,
+    ErrorCode.CHALLENGE_EXPIRED: 409,
+    ErrorCode.CURRENCY_NOT_SUPPORTED: 422,
+    ErrorCode.DAILY_LIMIT_EXCEEDED: 429,
+    ErrorCode.DEPENDENCY_UNAVAILABLE: 503,
+    ErrorCode.IDEMPOTENCY_CONFLICT: 409,
+    ErrorCode.INSUFFICIENT_BALANCE: 409,
+    ErrorCode.INSUFFICIENT_SCOPE: 403,
+    ErrorCode.INTERNAL_ERROR: 500,
+    ErrorCode.INVALID_CONTENT_DIGEST: 400,
+    ErrorCode.INVALID_CREDENTIALS: 401,
+    ErrorCode.INVITATION_INVALID: 401,
+    ErrorCode.INVOICE_REVEAL_LIMIT_EXCEEDED: 409,
+    ErrorCode.KEY_DUPLICATE: 409,
+    ErrorCode.KEY_PROOF_INVALID: 422,
+    ErrorCode.MALFORMED_SIGNED_REQUEST: 400,
+    ErrorCode.OPERATION_PROCESSING: 202,
+    ErrorCode.OWNER_LIMIT_EXCEEDED: 409,
+    ErrorCode.PRICE_CHANGED: 409,
+    ErrorCode.PURCHASE_NOT_ALLOWED: 409,
+    ErrorCode.QUANTITY_UNAVAILABLE: 409,
+    ErrorCode.RATE_LIMITED: 429,
+    ErrorCode.REPLAY_DETECTED: 409,
+    ErrorCode.REQUEST_TIMEOUT: 504,
+    ErrorCode.RESOURCE_NOT_FOUND: 404,
+    ErrorCode.REVEAL_NOT_ALLOWED: 409,
+    ErrorCode.SIGNATURE_EXPIRED: 401,
+    ErrorCode.SOURCE_IP_NOT_ALLOWED: 403,
+    ErrorCode.VALIDATION_FAILED: 422,
+    ErrorCode.WALLET_DISABLED: 409,
+    ErrorCode.WALLET_EXPIRED: 409,
+    ErrorCode.WALLET_NOT_GRANTED: 404,
+}
+
+
+RETRY_GUIDANCE: dict[ErrorCode, str] = {
+    ErrorCode.ACCOUNT_INACTIVE: "Confirm or re-enable the owner account before making a new request.",
+    ErrorCode.ALLOWED_DEBT_CONSENT_REQUIRED: "".join(
+        (
+            "Submit a new operation with explicit allowed-debt ",
+            "consent if the Partner intends to use debt.",
+        )
+    ),
+    ErrorCode.BINDING_NOT_AUTHORIZED: "".join(
+        (
+            "Restore the directly owned active account and Busi",
+            "ness subscription before making a new request.",
+        )
+    ),
+    ErrorCode.BUSINESS_SUBSCRIPTION_REQUIRED: "Restore an active Business subscription before making a new request.",
+    ErrorCode.CARD_NOT_FOUND: "".join(
+        (
+            "Verify the sold-card identifier and wallet; absent",
+            " and inaccessible single cards return the same rep",
+            "resentation.",
+        )
+    ),
+    ErrorCode.CARD_UNAVAILABLE: "Refresh Catalogue data and submit a new operation if the item becomes available.",
+    ErrorCode.CHALLENGE_EXPIRED: "".join(
+        (
+            "Restart enrollment through the approved staff acti",
+            "on and use the new challenge generation.",
+        )
+    ),
+    ErrorCode.CURRENCY_NOT_SUPPORTED: "Use the currency required by the authoritative wallet and Catalogue contract.",
+    ErrorCode.DAILY_LIMIT_EXCEEDED: "".join(
+        (
+            "No reset time is available; submit a new operation",
+            " and idempotency key only after the limit conditio",
+            "n is known to have cleared.",
+        )
+    ),
+    ErrorCode.DEPENDENCY_UNAVAILABLE: "".join(
+        (
+            "Retry with the same idempotency key for the same m",
+            "utation intent after bounded backoff.",
+        )
+    ),
+    ErrorCode.IDEMPOTENCY_CONFLICT: "".join(
+        (
+            "Reuse the key only for identical intent; use a new",
+            " UUID only for a genuinely new operation.",
+        )
+    ),
+    ErrorCode.INSUFFICIENT_BALANCE: "".join(
+        (
+            "Submit a new operation only after the authoritativ",
+            "e balance or allowed-debt state changes.",
+        )
+    ),
+    ErrorCode.INSUFFICIENT_SCOPE: "".join(
+        (
+            "The application is not permitted to make this call",
+            ": check that it holds the permission the call need",
+            "s and that you call from a network agreed with Ani",
+            "s, then ask Anis staff to change either.",
+        )
+    ),
+    ErrorCode.INTERNAL_ERROR: "".join(
+        (
+            "Preserve the same accepted operation and idempoten",
+            "cy key; retry only after bounded backoff or platfo",
+            "rm remediation.",
+        )
+    ),
+    ErrorCode.INVALID_CONTENT_DIGEST: "".join(
+        (
+            "Reserved: the current API never sends this code. A",
+            " Content-Digest that does not match the body is an",
+            "swered malformed_signed_request (400).",
+        )
+    ),
+    ErrorCode.INVALID_CREDENTIALS: "".join(
+        (
+            "Correct the signing credentials or profile before ",
+            "retrying; key and application state details are in",
+            "tentionally indistinguishable.",
+        )
+    ),
+    ErrorCode.INVITATION_INVALID: "Obtain a new enrollment invitation through the approved staff process.",
+    ErrorCode.INVOICE_REVEAL_LIMIT_EXCEEDED: "".join(
+        (
+            "Use individual reveal for selected cards; invoice ",
+            "reveal is capped at 100.",
+        )
+    ),
+    ErrorCode.KEY_DUPLICATE: "".join(
+        (
+            "This invitation already took a key, so a newly gen",
+            "erated key pair is refused too. Read the enrolment",
+            " status first; to enrol a different key, ask Anis ",
+            "staff to restart the enrolment.",
+        )
+    ),
+    ErrorCode.KEY_PROOF_INVALID: "Correct the P-256/P1363 proof for the active challenge generation.",
+    ErrorCode.MALFORMED_SIGNED_REQUEST: "".join(
+        (
+            "Rebuild how the request is signed: send both Signa",
+            "ture and Signature-Input, cover the required compo",
+            "nents in the documented order, send every header t",
+            "he route requires, and compute Content-Digest over",
+            " the exact body bytes. Repeating the same request ",
+            "unchanged fails the same way.",
+        )
+    ),
+    ErrorCode.OPERATION_PROCESSING: "".join(
+        (
+            "Not an error: the order was accepted and is still ",
+            "being processed. Wait for the Retry-After delay, t",
+            "hen repeat the identical POST with the same Idempo",
+            "tency-Key.",
+        )
+    ),
+    ErrorCode.OWNER_LIMIT_EXCEEDED: "".join(
+        (
+            "Do not poll; submit a new operation and idempotenc",
+            "y key only after the owner allowance is known to h",
+            "ave changed.",
+        )
+    ),
+    ErrorCode.PRICE_CHANGED: "Refresh the current price and explicitly accept it in a new operation.",
+    ErrorCode.PURCHASE_NOT_ALLOWED: "".join(
+        (
+            "The request conflicts with current owner business ",
+            "state; submit a new operation only after that stat",
+            "e changes.",
+        )
+    ),
+    ErrorCode.QUANTITY_UNAVAILABLE: "Refresh Catalogue data or submit a new operation with an available quantity.",
+    ErrorCode.RATE_LIMITED: "honour Retry-After when present; otherwise use bounded exponential backoff.",
+    ErrorCode.REPLAY_DETECTED: "".join(
+        (
+            "Use a fresh nonce and signature while preserving t",
+            "he idempotency key for the same business intent.",
+        )
+    ),
+    ErrorCode.REQUEST_TIMEOUT: "".join(
+        (
+            "Inspect operation status or repeat the identical r",
+            "equest with the same idempotency key.",
+        )
+    ),
+    ErrorCode.RESOURCE_NOT_FOUND: "".join(
+        (
+            "Verify the resource identifier and application own",
+            "ership; inaccessible resources are intentionally i",
+            "ndistinguishable from absence.",
+        )
+    ),
+    ErrorCode.REVEAL_NOT_ALLOWED: "".join(
+        (
+            "The card-level reveal predicate refused disclosure",
+            "; do not retry until the card state is known to ha",
+            "ve changed.",
+        )
+    ),
+    ErrorCode.SIGNATURE_EXPIRED: "".join(
+        (
+            "Reserved: the current API never sends this code. A",
+            " signature outside its validity window is answered",
+            " invalid_credentials (401); sign again with curren",
+            "t timestamps.",
+        )
+    ),
+    ErrorCode.SOURCE_IP_NOT_ALLOWED: "".join(
+        (
+            "Anis network protection blocked this source addres",
+            "s. Contact Anis support with the address if it sho",
+            "uld be allowed.",
+        )
+    ),
+    ErrorCode.VALIDATION_FAILED: "".join(
+        (
+            "The response never names the field: check the requ",
+            "est against the documented rules before sending it",
+            " again. How the request is sent counts too: a body",
+            " over 64 KB, a chunked body (send Content-Length i",
+            "nstead), headers over 32 KB in total, a path and q",
+            "uery over 2,048 characters, a body on a call that ",
+            "takes none, or an order whose Idempotency-Key is m",
+            "issing or is not a UUID written with hyphens.",
+        )
+    ),
+    ErrorCode.WALLET_DISABLED: "Submit a new request only after the wallet has been re-enabled.",
+    ErrorCode.WALLET_EXPIRED: "".join(
+        (
+            "Submit a new request only after the account or Bus",
+            "iness subscription expiry is resolved.",
+        )
+    ),
+    ErrorCode.WALLET_NOT_GRANTED: "Obtain an approved current wallet grant before making a new request.",
+}
 
 
 RETRYABLE_CODES: frozenset[ErrorCode] = frozenset(

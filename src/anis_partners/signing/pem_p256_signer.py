@@ -18,6 +18,13 @@ class PemP256Signer:
 
     _private_key: ec.EllipticCurvePrivateKey
 
+    def __post_init__(self) -> None:
+        """Enforce the curve at every construction path so direct callers cannot create an invalid signer."""
+        if not isinstance(self._private_key, ec.EllipticCurvePrivateKey) or not isinstance(
+            self._private_key.curve, ec.SECP256R1
+        ):
+            raise ValueError("The Anis Partner API accepts NIST P-256 private keys only.")
+
     @classmethod
     def from_pem(cls, pem: str | bytes) -> "PemP256Signer":
         """Refuse non-P-256 keys at load time so curve mismatch cannot surface as a later Anis refusal."""

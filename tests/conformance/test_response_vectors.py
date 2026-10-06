@@ -1,5 +1,7 @@
 """Sync and async response verification against every released response vector."""
 
+import base64
+import json
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -37,7 +39,7 @@ class StaticKeys:
         """Return vector keys."""
         return self._keys
 
-    def refresh(self) -> SigningKeySet:
+    def refresh(self, previous: SigningKeySet | None = None) -> SigningKeySet:
         """Return vector keys after an unknown key request."""
         self.refresh_calls += 1
         return self._keys
@@ -54,7 +56,7 @@ class AsyncStaticKeys:
         """Return vector keys."""
         return self._keys
 
-    async def refresh(self) -> SigningKeySet:
+    async def refresh(self, previous: SigningKeySet | None = None) -> SigningKeySet:
         """Return vector keys after an unknown key request."""
         self.refresh_calls += 1
         return self._keys
@@ -69,14 +71,14 @@ def _subject(vector: dict[str, object]) -> VerifiableResponse:
     return VerifiableResponse(
         status=response["status"],
         headers=response["headers"],
-        body=__import__("base64").b64decode(response["bodyBase64"]),
+        body=base64.b64decode(response["bodyBase64"]),
         request_signature_input=request["signatureInput"],
     )
 
 
 def _keys(vector: dict[str, object]) -> SigningKeySet:
     """Parse the response vector's published key document."""
-    return SigningKeySet.from_json(__import__("json").dumps(vector["signingKeys"]))
+    return SigningKeySet.from_json(json.dumps(vector["signingKeys"]))
 
 
 def _expected(vector: dict[str, object]) -> str | None:
@@ -119,9 +121,3 @@ async def test_async_verifier_reaches_each_declared_vector_outcome(path: Path) -
         with pytest.raises(UnverifiableResponseError) as caught:
             await verifier.verify(_subject(vector))
         assert caught.value.failure.value == reason
-
-
-@pytest.fixture
-def anyio_backend() -> str:
-    """Run async tests on the required asyncio backend."""
-    return "asyncio"

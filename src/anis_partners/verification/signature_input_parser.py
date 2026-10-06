@@ -78,7 +78,12 @@ def parse(value: str) -> ParsedSignatureInput | None:
             if name == "created":
                 if saw_created:
                     return None
-                created = int(number_text)
+                try:
+                    created = int(number_text)
+                except ValueError:
+                    return None
+                if created > 9_223_372_036_854_775_807:
+                    return None
                 saw_created = True
             index = end
     if created is None or key_id is None:

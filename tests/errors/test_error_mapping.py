@@ -25,6 +25,7 @@ from anis_partners.errors import (
     ValidationFailedError,
     create_api_error,
     parse_error_code,
+    parse_retry_after,
 )
 
 DECISIONS: dict[str, tuple[type[AnisApiError], OrderRefusalOutcome]] = {
@@ -131,3 +132,22 @@ def test_retry_after_and_replay_headers_are_preserved() -> None:
     assert failure.request_id == "req-1"
     assert failure.is_retryable
     assert ErrorCode.INTERNAL_ERROR in RETRYABLE_CODES
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("05", 5),
+        ("00000000005", 5),
+        ("0", 0),
+        ("2147483647", 2_147_483_647),
+        ("2147483648", None),
+        ("+5", None),
+        (" 5", None),
+        ("\u0665", None),
+    ],
+)
+def test_retry_after_accepts_decimal_seconds_by_value(value: str, expected: int | None) -> None:
+    """Accept digit-only seconds by numeric value, including leading zeros, within signed 32-bit bounds."""
+    delay = parse_retry_after(value)
+    assert delay == (timedelta(seconds=expected) if expected is not None else None)

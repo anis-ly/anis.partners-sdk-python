@@ -1,7 +1,6 @@
 """Fingerprint submitted public keys so enrollment detects key substitution before proof is trusted."""
 
 import hashlib
-import hmac
 import json
 
 from anis_partners._internal.base64url import decode, encode
@@ -22,8 +21,3 @@ def compute(public_jwk: PartnerJwk) -> str:
         ensure_ascii=False,
     )
     return encode(hashlib.sha256(canonical.encode("utf-8")).digest())
-
-
-def fixed_time_equals(left: str, right: str) -> bool:
-    """Compare in fixed time so fingerprint differences do not leak through comparison timing."""
-    return hmac.compare_digest(left.encode("utf-8"), right.encode("utf-8"))

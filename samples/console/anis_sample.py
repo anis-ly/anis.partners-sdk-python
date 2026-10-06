@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import os
 import sys
+import tempfile
 from collections.abc import Callable
 from dataclasses import asdict, is_dataclass
 from datetime import UTC, datetime, timedelta
@@ -22,6 +24,7 @@ from anis_partners import (
     AnisApiError,
     AnisEnrollmentClient,
     AnisPartnersClient,
+    AnisPartnersError,
     ClientOptions,
     CreateOrderRequest,
     EnrollmentKeyRequest,
@@ -32,6 +35,7 @@ from anis_partners import (
     OrderOutcomeUnknown,
     OrderProcessing,
     OrderReplayed,
+    OrderStatus,
     PemP256Signer,
     RequestSigner,
     UnverifiableResponseError,
@@ -52,6 +56,7 @@ def _parser() -> argparse.ArgumentParser:
     ) -> argparse.ArgumentParser:
         command = commands.add_parser(name, help=help_text)
         command.add_argument("--dry-run", action="store_true", help="show the signed request and send nothing")
+        command.add_argument("--show-secrets", action="store_true", help="print revealed card codes in full")
         for argument, converter in arguments:
             if converter is None:
                 command.add_argument(argument)
@@ -85,7 +90,7 @@ def _parser() -> argparse.ArgumentParser:
         ("quantity", int),
         ("--operation", UUID),
         ("--reference", None),
-        ("--expected-unit-price", Decimal),
+        ("--expected-unit-price", _decimal_argument),
     )
     order.add_argument("--use-allowed-debt", action="store_true")
     add("resume", "resume a saved order with its same id and body", ("operation_id", UUID))
@@ -136,27 +141,44 @@ def _settings(args: argparse.Namespace, supplied: dict[str, object] | None) -> d
     return result
 
 
-def _safe_value(value: object) -> object:
+def _safe_value(value: object, show_secrets: bool = False) -> object:
     if is_dataclass(value) and not isinstance(value, type):
-        return _safe_value(asdict(cast(Any, value)))
+        return _safe_value(asdict(cast(Any, value)), show_secrets)
     if isinstance(value, dict):
         return {
-            key: "<redacted>" if key.casefold() in {"voucher", "serial_number", "serialnumber"} else _safe_value(item)
+            key: _mask_secret(str(item))
+            if key.casefold() in {"voucher", "serial_number", "serialnumber"} and not show_secrets
+            else _safe_value(item, show_secrets)
             for key, item in value.items()
         }
     if isinstance(value, (list, tuple)):
-        return [_safe_value(item) for item in value]
+        return [_safe_value(item, show_secrets) for item in value]
     if isinstance(value, (UUID, datetime, Decimal, timedelta)):
         return str(value)
     return value
 
 
-def _show(value: object, output: TextIO) -> None:
-    print(json.dumps(_safe_value(value), indent=2, default=str), file=output)
+def _show(value: object, output: TextIO, *, show_secrets: bool = False) -> None:
+    print(json.dumps(_safe_value(value, show_secrets), indent=2, default=str), file=output)
 
 
-def _refusal_line(error: AnisApiError, *, order: bool = False) -> str:
+def _mask_secret(value: str) -> str:
+    """Keep the last two characters recognizable so operators can match a code without exposing it."""
+    return "*" * max(0, len(value) - 2) + value[-2:]
+
+
+def _decimal_argument(value: str) -> Decimal:
+    """Turn malformed command-line prices into one argparse line instead of a Decimal traceback."""
+    try:
+        return Decimal(value)
+    except Exception:
+        raise argparse.ArgumentTypeError("expected a decimal price") from None
+
+
+def _refusal_line(error: AnisPartnersError, *, order: bool = False) -> str:
     """Show the stable refusal facts needed to decide whether a recorded answer can be resumed."""
+    if not isinstance(error, AnisApiError):
+        return "REFUSED code=unknown status=0 request_id=none retryable=False recorded_answer=no"
     recorded = "yes" if error.is_replayed else "no"
     retryable = "yes" if error.is_retryable else "no"
     request_id = error.request_id or "-"
@@ -170,8 +192,21 @@ def _refusal_line(error: AnisApiError, *, order: bool = False) -> str:
 def _show_order_outcome(result: object, operation_id: UUID, output: TextIO) -> None:
     """Print the recovery state directly so a partner can act without interpreting a JSON dump."""
     if isinstance(result, OrderCompleted):
-        print(f"COMPLETED operation {operation_id}", file=output)
+        if result.codes_withheld:
+            print(
+                f"COMPLETED, CODES WITHHELD — do not buy again; contact support@anis.ly with operation {operation_id}",
+                file=output,
+            )
+        else:
+            print(f"COMPLETED operation {operation_id}", file=output)
     elif isinstance(result, OrderProcessing):
+        if result.order.status is OrderStatus.RECOVERY_EXHAUSTED:
+            print(
+                f"RECOVERY EXHAUSTED operation {operation_id}; keep the same id and resume slowly; "
+                f"contact support@anis.ly with operation {operation_id}",
+                file=output,
+            )
+            return
         print(
             f"PROCESSING operation {operation_id}; resume {operation_id} after "
             f"{int(result.retry_after.total_seconds())} s",
@@ -217,10 +252,26 @@ def _journal_path(settings: dict[str, object], operation_id: UUID) -> Path:
 def _record_intent(path: Path, wallet_id: UUID, request: CreateOrderRequest) -> None:
     if path.exists():
         raise ValueError(f"Intent {path.stem} already exists; resume that order instead of placing it again.")
-    document = {"wallet_id": str(wallet_id), "request": request.to_json()}
-    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-    with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
-        json.dump(document, stream, indent=2)
+    document = {"wallet_id": str(wallet_id), "operation_id": path.stem, "request": request.to_json()}
+    descriptor, temporary = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
+    try:
+        os.fchmod(descriptor, 0o600)
+        with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+            json.dump(document, stream, indent=2)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.link(temporary, path)
+        Path(temporary).unlink()
+        directory = os.open(path.parent, os.O_RDONLY)
+        try:
+            os.fsync(directory)
+        finally:
+            os.close(directory)
+    except BaseException:
+        with contextlib.suppress(OSError):
+            os.close(descriptor)
+        Path(temporary).unlink(missing_ok=True)
+        raise
 
 
 def _record_result(path: Path, result: object) -> None:
@@ -228,18 +279,46 @@ def _record_result(path: Path, result: object) -> None:
     record = json.loads(path.read_text(encoding="utf-8"))
     if isinstance(result, OrderCompleted):
         record["outcome"] = "completed-withheld" if result.codes_withheld else "completed"
-        record["credentials"] = [credential.to_json() for credential in result.credentials]
+        if result.credentials:
+            stored = record.get("credentials", [])
+            if not isinstance(stored, list):
+                stored = []
+            record["credentials"] = [*stored, *(credential.to_json() for credential in result.credentials)]
     elif isinstance(result, OrderProcessing):
         record["outcome"] = "processing"
     elif isinstance(result, OrderReplayed):
-        record["outcome"] = "replayed"
+        if "credentials" not in record:
+            record["outcome"] = "replayed"
     elif isinstance(result, OrderNotPlaced):
         record["outcome"] = "not-placed"
-        record["error_code"] = result.refusal.raw_code
+        record["error_code"] = result.refusal.raw_code if isinstance(result.refusal, AnisApiError) else "unknown"
     elif isinstance(result, OrderOutcomeUnknown):
-        record["outcome"] = "unknown"
-        record["cause_type"] = type(result.cause).__name__
-    path.write_text(json.dumps(record, indent=2), encoding="utf-8")
+        if "credentials" not in record:
+            record["outcome"] = "unknown"
+            record["cause_type"] = type(result.cause).__name__
+    _atomic_private_json(path, record)
+
+
+def _atomic_private_json(path: Path, value: object) -> None:
+    """Replace the journal atomically so a crash cannot truncate its operation id or delivered codes."""
+    descriptor, temporary = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
+    try:
+        os.fchmod(descriptor, 0o600)
+        with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+            json.dump(value, stream, indent=2)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+        directory = os.open(path.parent, os.O_RDONLY)
+        try:
+            os.fsync(directory)
+        finally:
+            os.close(directory)
+    except BaseException:
+        with contextlib.suppress(OSError):
+            os.close(descriptor)
+        Path(temporary).unlink(missing_ok=True)
+        raise
 
 
 def _run_command(
@@ -283,6 +362,9 @@ def _run_command(
                 )
                 status = enrollment.prove(submitted, local_signer)
                 _show(status, output)
+                if status.proof_state != "accepted":
+                    print("ENROLLMENT PROOF NOT ACCEPTED; ask Anis staff to restart enrollment.", file=output)
+                    return 2
                 print(f"key id: {submitted.key_id}\nSafety code: {submitted.safety_code}", file=output)
             return None
 
@@ -315,9 +397,15 @@ def _run_command(
             elif command == "owned-card":
                 _show(anis.owned_cards.get(args.wallet_id, args.sold_card_id), output)
             elif command == "reveal":
-                _show(anis.owned_cards.reveal(args.wallet_id, args.sold_card_id), output)
+                _show(
+                    anis.owned_cards.reveal(args.wallet_id, args.sold_card_id), output, show_secrets=args.show_secrets
+                )
             elif command == "reveal-invoice":
-                _show(anis.owned_cards.reveal_invoice(args.wallet_id, args.invoice_id), output)
+                _show(
+                    anis.owned_cards.reveal_invoice(args.wallet_id, args.invoice_id),
+                    output,
+                    show_secrets=args.show_secrets,
+                )
             elif command == "diagnostic":
                 _show(anis.diagnostics.check_signature(), output)
             elif command == "order-status":
@@ -354,7 +442,7 @@ def _run_command(
                     path = _journal_path(settings, operation_id)
                     _record_intent(path, args.wallet_id, request)  # durable intent precedes the order request
                     print(f"Intent recorded at {path}; operation id {operation_id}", file=output)
-                result = anis.orders.create(args.wallet_id, operation_id, request)
+                result = anis.orders.create(wallet_id=args.wallet_id, operation_id=operation_id, order=request)
                 if path is not None:
                     _record_result(path, result)
                 _show_order_outcome(result, operation_id, output)
@@ -366,10 +454,15 @@ def _run_command(
             elif command == "resume":
                 path = _journal_path(settings, args.operation_id)
                 saved = json.loads(path.read_text(encoding="utf-8"))
+                operation_id = UUID(saved["operation_id"])
+                if operation_id != args.operation_id:
+                    raise ValueError("The journal operation id does not match the requested resume id.")
                 request = CreateOrderRequest.from_json(saved["request"])
-                result = anis.orders.resume(UUID(saved["wallet_id"]), args.operation_id, request)
+                result = anis.orders.resume(
+                    wallet_id=UUID(saved["wallet_id"]), operation_id=operation_id, order=request
+                )
                 _record_result(path, result)
-                _show_order_outcome(result, args.operation_id, output)
+                _show_order_outcome(result, operation_id, output)
                 if not isinstance(result, OrderNotPlaced):
                     if not isinstance(result, OrderOutcomeUnknown):
                         _show(result, output)

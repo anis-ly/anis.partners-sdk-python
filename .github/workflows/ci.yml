@@ -21,7 +21,7 @@ jobs:
       - uses: astral-sh/setup-uv@v6
 
       - name: Install
-        run: uv sync --python ${{ matrix.python }}
+        run: uv sync --locked --python ${{ matrix.python }}
 
       - name: Lint, format and types
         run: |
@@ -29,8 +29,23 @@ jobs:
           uv run ruff format --check .
           uv run mypy
 
-      - name: Tests (every conformance vector and every .NET twin)
+      - name: Conformance vectors and client tests
         run: uv run pytest -q
 
       - name: Build the wheel and the source archive
         run: uv build
+
+  lowest-direct:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Resolve direct dependencies at their lowest declared versions
+        run: uv sync --resolution lowest-direct --python 3.11
+      - name: Run the full quality gate
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
+          uv run mypy
+          uv run pytest -q
+          uv build

@@ -5,10 +5,13 @@
 Anis staff provide an invitation id and a single-use enrollment token for your application. Generate a P-256 key pair and save the private key under your control before submitting its public half. The private key never needs to leave your system.
 
 ```python
+import os
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from uuid import UUID
 
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import ec
 from anis_partners import AnisEnrollmentClient, EnrollmentKeyRequest, PemP256Signer
 
 authority = "https://<authority Anis gave you>"
@@ -16,8 +19,19 @@ invitation_id = UUID("<invitation id>")
 enrollment_token = "<single-use token>"
 key_path = Path("/secure/anis/partner-key.pem")
 
-# Create the key before this flow, write its PEM with mode 0o600, and do not overwrite an existing key.
-signer = PemP256Signer.from_pem_file(key_path)
+private_key = ec.generate_private_key(ec.SECP256R1())
+pem = private_key.private_bytes(
+    serialization.Encoding.PEM,
+    serialization.PrivateFormat.PKCS8,
+    serialization.NoEncryption(),
+)
+key_path.parent.mkdir(parents=True, exist_ok=True)
+descriptor = os.open(key_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+with os.fdopen(descriptor, "wb") as key_file:
+    key_file.write(pem)
+    key_file.flush()
+    os.fsync(key_file.fileno())
+signer = PemP256Signer.from_pem(pem)
 now = datetime.now(UTC)
 
 with AnisEnrollmentClient(authority, invitation_id, enrollment_token) as enrollment:
@@ -53,6 +67,8 @@ options = ClientOptions(
 Settings may also come from a mapping. Python code should use the snake_case names:
 
 ```python
+from anis_partners import ClientOptions
+
 options = ClientOptions.from_mapping(
     {
         "authority": "https://<authority Anis gave you>",
@@ -64,7 +80,7 @@ options = ClientOptions.from_mapping(
 )
 ```
 
-For a settings file shared with the .NET SDK, `from_mapping` also accepts an `AnisPartners` section with the camelCase keys `authority`, `signatureLifetime`, `acceptLanguage`, `signingKeyCacheDuration`, and `timeout`. The .NET PascalCase key names remain accepted for compatibility.
+For a settings file shared across runtimes, `from_mapping` also accepts an `AnisPartners` section with the camelCase keys `authority`, `signatureLifetime`, `acceptLanguage`, `signingKeyCacheDuration`, and `timeout`. PascalCase names remain accepted for compatibility; Python examples should use snake_case.
 
 There is no default signer because the right place for a private key depends on your environment. `PemP256Signer.from_pem_file(path).for_key(key_id)` loads a local P-256 PEM key. A vault or hardware signer can implement the same `sign(data: bytes) -> bytes` seam and return a 64-byte P1363 signature.
 
@@ -115,6 +131,8 @@ Keep the PEM private key in a protected secret mount or a file under the Odoo se
 
 Create one `AnisPartnersClient` per worker process and reuse it for that worker's requests. Do not create a new connection pool for each model method call. Close the client during worker shutdown. If the SDK owns its HTTP client, use the context manager in the worker lifecycle; if Odoo provides an `httpx.Client`, inject it and close it according to the worker's resource lifecycle.
 
-Odoo workers have separate memory. Supply a shared `KeyDocumentCache` backed by Django's cache, Memcached, or another host cache so each worker can reuse the published signing-key document. The cache is only for public verification keys and has a bounded time-to-live; see [Signing key cache](caching.md).
+Odoo workers have separate memory. Supply a shared `KeyDocumentCache` backed by Odoo's configured cache integration or a shared Redis/Memcached adapter so each worker can reuse the published signing-key document. The cache is only for public verification keys and has a bounded time-to-live; see [Signing key cache](caching.md). Do not use Django cache APIs in an Odoo module.
+
+Use Odoo's ORM for the durable order journal and Odoo cron or a queue job for delayed recovery. In one database transaction, create and commit the intent with a fresh operation UUID, wallet, and exact request before making the Anis call. Record the verified outcome in a later transaction. A process restart can then resume the same saved intent rather than creating a second purchase.
 
 Revealed card codes are secrets. Pass them directly to the protected fulfillment path, never put them in application logs, exception messages, chatter, or audit notes. Log an order id and its outcome instead.

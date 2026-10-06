@@ -6,12 +6,14 @@ import copy
 import pickle
 from dataclasses import asdict
 from datetime import timedelta
+from typing import get_type_hints
 from uuid import UUID
 
 import pytest
 
 from anis_partners import (
     AnisApiError,
+    AnisPartnersError,
     AuthorizationError,
     DependencyUnavailableError,
     EnrollmentKeyMismatchError,
@@ -19,7 +21,9 @@ from anis_partners import (
     IdempotencyConflictError,
     InsufficientBalanceError,
     InvalidCredentialsError,
+    KeyDocumentUnavailableError,
     LimitExceededError,
+    MalformedResponseError,
     OrderNotPlaced,
     OrderOutcomeUnknown,
     OutOfStockError,
@@ -75,11 +79,14 @@ def test_api_refusals_survive_copy_deepcopy_and_pickle(error_type: type[AnisApiE
 @pytest.mark.parametrize(
     "error",
     [
+        AnisPartnersError("base failure"),
         RequestSigningError("signing failed"),
         UnverifiableResponseError(ResponseVerificationFailure.SIGNATURE_INVALID),
         EnrollmentKeyMismatchError("local-thumbprint", "server-thumbprint"),
+        KeyDocumentUnavailableError("key document unavailable"),
+        MalformedResponseError("verified answer did not match its model"),
     ],
-    ids=["request-signing", "unverifiable-response", "enrollment-key-mismatch"],
+    ids=["base", "request-signing", "unverifiable-response", "enrollment-key-mismatch", "key-document", "malformed"],
 )
 def test_other_sdk_exceptions_survive_copy_deepcopy_and_pickle(error: Exception) -> None:
     for rebuilt in (copy.copy(error), copy.deepcopy(error), _pickle_round_trip(error)):
@@ -103,6 +110,11 @@ def test_order_refusal_survives_asdict() -> None:
     assert isinstance(copied, PriceChangedError)
     assert copied.raw_code == "price_changed"
     assert copied.status == 409
+
+
+def test_order_not_placed_exposes_a_resolvable_public_refusal_type() -> None:
+    """Keep reflection-based partner tools able to inspect refusals without private imports."""
+    assert get_type_hints(OrderNotPlaced)["refusal"] is AnisPartnersError
 
 
 def test_unknown_order_cause_survives_asdict() -> None:

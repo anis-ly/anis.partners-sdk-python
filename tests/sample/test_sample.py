@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+import json
 from datetime import timedelta
 from decimal import Decimal
 from pathlib import Path
@@ -25,8 +26,9 @@ from anis_partners import (
     OrderReplayed,
     OrderStatus,
     PriceChangedError,
+    RevealedCredential,
 )
-from anis_partners.models import Money, Problem
+from anis_partners.models import EnrollmentStatus, Money, Problem
 from samples.console import anis_sample
 from samples.console.anis_sample import main
 
@@ -98,6 +100,48 @@ def test_enrol_dry_run_creates_key_in_memory_without_writing_file(tmp_path: Path
     assert "one-time-token" not in output.getvalue()
 
 
+def test_enrollment_proof_must_be_accepted(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Return a failing process code when the enrollment proof was not accepted by Anis."""
+
+    class FakeEnrollment:
+        def __init__(self, authority: str, invitation_id: str, token: str, *, http_client: object) -> None:
+            pass
+
+        def __enter__(self) -> FakeEnrollment:
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            return None
+
+        def submit_key(self, request: object) -> object:
+            return SimpleNamespace(key_id=UUID("9e96dc41-c715-4cc4-b1aa-836fe42ad0bb"), safety_code="1234567890123456")
+
+        def prove(self, submitted: object, signer: object) -> EnrollmentStatus:
+            return EnrollmentStatus(proof_state="pending")
+
+    key_file = tmp_path / "partner-key.pem"
+    monkeypatch.setattr(anis_sample, "AnisEnrollmentClient", FakeEnrollment)
+    output = io.StringIO()
+    result = main(
+        [
+            "enrol",
+            "--invitation",
+            "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+            "--token",
+            "one-time-token",
+            "--key-file",
+            str(key_file),
+        ],
+        settings={"Authority": "https://partners.example"},
+        output=output,
+    )
+    assert result != 0
+    assert "ENROLLMENT PROOF NOT ACCEPTED" in output.getvalue()
+    assert key_file.exists()
+    assert key_file.stat().st_mode & 0o777 == 0o600
+    assert "Safety code:" not in output.getvalue()
+
+
 def test_sample_parser_accepts_reference_order_and_enrollment_arguments() -> None:
     parsed = anis_sample._parser().parse_args(
         [
@@ -153,6 +197,7 @@ class _FakeClient:
         self.captured: tuple[object, ...] | None = None
         self.error: Exception | None = None
         self.result: object | None = None
+        self.intent_path: Path | None = None
 
     def __enter__(self) -> _FakeClient:
         return self
@@ -171,8 +216,12 @@ class _FakeClient:
         card.unit_price = Money(Decimal("12.000"), "LYD")
         return [card]
 
-    def create(self, *args: object) -> object:
-        self.captured = args
+    def create(self, *args: object, **kwargs: object) -> object:
+        self.captured = args or (kwargs["wallet_id"], kwargs["operation_id"], kwargs["order"])
+        if self.intent_path is not None:
+            saved = json.loads(self.intent_path.read_text(encoding="utf-8"))
+            assert UUID(saved["operation_id"]) == args[1]
+            assert self.intent_path.stat().st_mode & 0o777 == 0o600
         if self.result is None:
             raise AssertionError("The test must configure an order result.")
         return self.result
@@ -217,6 +266,35 @@ def test_expected_unit_price_reference_and_debt_are_sent_to_order(
     assert request.external_reference == "merchant-17"
     assert request.use_allowed_debt is True
     assert "NOT PLACED code=price_changed status=409" in output.getvalue()
+
+
+def test_sample_commits_private_intent_before_the_order_call(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Ensure the journal already contains the operation id when the purchase reaches the client."""
+    operation = UUID("7c9e6679-7425-40de-944b-e07fc1f90aea")
+    card = UUID("7c9e6679-7425-40de-944b-e07fc1f90ae9")
+    api = _FakeClient(None, None)
+    api.intent_path = tmp_path / f"{operation}.json"
+    api.result = OrderNotPlaced(operation, PriceChangedError(Problem(status=409, code="price_changed"), 409))
+    monkeypatch.setattr(anis_sample, "_signer", lambda _settings: object())
+    monkeypatch.setattr(anis_sample, "AnisPartnersClient", lambda *args, **kwargs: api)
+    output = io.StringIO()
+    main(
+        [
+            "order",
+            "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+            "7c9e6679-7425-40de-944b-e07fc1f90ae8",
+            str(card),
+            "1",
+            "--operation",
+            str(operation),
+            "--expected-unit-price",
+            "10.500",
+        ],
+        settings={"Authority": "https://partners.example", "orders_folder": str(tmp_path)},
+        output=output,
+    )
+    assert api.intent_path.exists()
+    assert f'"operation_id": "{operation}"' in api.intent_path.read_text(encoding="utf-8")
 
 
 def test_refused_wallet_read_prints_refused_and_returns_nonzero(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -273,6 +351,22 @@ def test_tour_displays_the_published_signing_keys(monkeypatch: pytest.MonkeyPatc
     assert "signing-key-7" in output.getvalue()
 
 
+def test_sample_reveals_codes_only_with_the_explicit_switch() -> None:
+    credential = RevealedCredential(
+        UUID("4a6c2e81-7b39-4d15-a2f8-3e7b9c1d5046"), serial_number="private-serial", voucher="private-voucher"
+    )
+    hidden = io.StringIO()
+    shown = io.StringIO()
+
+    anis_sample._show(credential, hidden)
+    anis_sample._show(credential, shown, show_secrets=True)
+
+    assert "private-serial" not in hidden.getvalue()
+    assert "private-voucher" not in hidden.getvalue()
+    assert "private-serial" in shown.getvalue()
+    assert "private-voucher" in shown.getvalue()
+
+
 @pytest.mark.parametrize(
     ("result", "expected"),
     [
@@ -292,8 +386,18 @@ def test_tour_displays_the_published_signing_keys(monkeypatch: pytest.MonkeyPatc
             ),
             "UNKNOWN operation",
         ),
+        (
+            OrderCompleted(Order(operation_id=UUID(int=1), status=OrderStatus.COMPLETED, codes_withheld=True)),
+            "COMPLETED, CODES WITHHELD",
+        ),
+        (
+            OrderProcessing(
+                Order(operation_id=UUID(int=1), status=OrderStatus.RECOVERY_EXHAUSTED), timedelta(minutes=1)
+            ),
+            "RECOVERY EXHAUSTED",
+        ),
     ],
-    ids=["completed", "processing", "replayed", "not-placed", "unknown"],
+    ids=["completed", "processing", "replayed", "not-placed", "unknown", "withheld", "recovery-exhausted"],
 )
 def test_sample_prints_each_order_recovery_outcome(result: object, expected: str) -> None:
     output = io.StringIO()
@@ -301,3 +405,58 @@ def test_sample_prints_each_order_recovery_outcome(result: object, expected: str
     anis_sample._show_order_outcome(result, UUID(int=1), output)
 
     assert expected in output.getvalue()
+
+
+def test_withheld_completion_merges_supplied_credentials(tmp_path: Path) -> None:
+    """Merge every supplied credential into the journal even when the result is marked withheld."""
+    path = tmp_path / "order.json"
+    previous = [{"voucher": "previous-voucher", "serialNumber": "previous-serial"}]
+    path.write_text(json.dumps({"credentials": previous}), encoding="utf-8")
+    partial = RevealedCredential(sold_card_id=UUID(int=2), voucher="partial-voucher", serial_number="partial-serial")
+    result = OrderCompleted(
+        Order(
+            operation_id=UUID(int=1),
+            status=OrderStatus.COMPLETED,
+            sold_cards=(partial,),
+            codes_withheld=True,
+        )
+    )
+
+    anis_sample._record_result(path, result)
+
+    record = json.loads(path.read_text(encoding="utf-8"))
+    assert record["outcome"] == "completed-withheld"
+    assert record["credentials"] == [*previous, partial.to_json()]
+
+
+def test_withheld_completion_adds_credentials_when_journal_list_is_empty(tmp_path: Path) -> None:
+    """Persist credentials supplied by a withheld completion when the journal has an empty credentials list."""
+    path = tmp_path / "order.json"
+    path.write_text(json.dumps({"credentials": []}), encoding="utf-8")
+    supplied = RevealedCredential(sold_card_id=UUID(int=3), voucher="supplied-voucher", serial_number="supplied-serial")
+    result = OrderCompleted(
+        Order(
+            operation_id=UUID(int=1),
+            status=OrderStatus.COMPLETED,
+            sold_cards=(supplied,),
+            codes_withheld=True,
+        )
+    )
+
+    anis_sample._record_result(path, result)
+
+    record = json.loads(path.read_text(encoding="utf-8"))
+    assert record["credentials"] == [supplied.to_json()]
+
+
+def test_withheld_completion_retains_stored_credentials_when_answer_has_none(tmp_path: Path) -> None:
+    """Keep previously journalled credentials when a withheld answer supplies no new credentials."""
+    path = tmp_path / "order.json"
+    previous = [{"voucher": "previous-voucher", "serialNumber": "previous-serial"}]
+    path.write_text(json.dumps({"credentials": previous}), encoding="utf-8")
+    result = OrderCompleted(Order(operation_id=UUID(int=1), status=OrderStatus.COMPLETED, codes_withheld=True))
+
+    anis_sample._record_result(path, result)
+
+    record = json.loads(path.read_text(encoding="utf-8"))
+    assert record["credentials"] == previous

@@ -1,12 +1,16 @@
 """Exact decimal money values for prices read from and sent to Anis."""
 
+import re
 from dataclasses import dataclass
 from datetime import datetime
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal, InvalidOperation, localcontext
 
 from anis_partners.models._json import field, object_data, text, timestamp, wire_timestamp
 
 _SCALE = Decimal("0.001")
+_DECIMAL_PRECISION = 29
+_AMOUNT_TEXT = re.compile(r"-?[0-9]+(?:\.[0-9]+)?\Z")
+_AMOUNT_ERROR = "Anis amounts have at most three decimal places"
 
 
 @dataclass(frozen=True, slots=True)
@@ -28,7 +32,15 @@ class Money:
             raise ValueError("Money amount must be a finite decimal value.")
         if _decimal_places(self.amount) > 3:
             raise ValueError("Anis amounts have at most three decimal places")
-        object.__setattr__(self, "amount", self.amount.quantize(_SCALE))
+        try:
+            with localcontext() as context:
+                context.prec = _DECIMAL_PRECISION
+                amount = self.amount.quantize(_SCALE)
+        except InvalidOperation:
+            raise ValueError("Money amount is outside the supported decimal range.") from None
+        if amount.is_zero():
+            amount = amount.copy_abs()
+        object.__setattr__(self, "amount", amount)
         if self.as_of is not None:
             parsed = timestamp(self.as_of)
             if parsed is None:
@@ -42,14 +54,18 @@ class Money:
         amount = field(value, "amount")
         if not isinstance(amount, str):
             raise ValueError("Money amount must be a decimal string, never a JSON number.")
+        if not _AMOUNT_TEXT.fullmatch(amount):
+            raise ValueError("Money amount must be plain decimal text.")
         try:
             decimal_amount = Decimal(amount)
-        except (InvalidOperation, ValueError) as exc:
-            raise ValueError("Money amount must be valid decimal text.") from exc
+        except (InvalidOperation, ValueError):
+            raise ValueError("Money amount must be valid decimal text.") from None
         if not decimal_amount.is_finite():
             raise ValueError("Money amount must be a finite decimal value.")
         if _decimal_places(decimal_amount) > 3:
-            raise ValueError("Anis amounts have at most three decimal places")
+            raise ValueError(_AMOUNT_ERROR)
+        if amount.startswith("-") and decimal_amount.is_zero():
+            raise ValueError("Negative zero is not a valid Anis amount.")
         currency = text(field(value, "currency"), "")
         return cls(decimal_amount, currency or "", timestamp(field(value, "asOf")))
 
@@ -57,7 +73,13 @@ class Money:
         """Multiply exactly by a whole quantity and clear the old price observation time."""
         if isinstance(quantity, bool) or not isinstance(quantity, int):
             raise TypeError("Money can only be multiplied by an integer quantity.")
-        return Money(self.amount * quantity, self.currency)
+        try:
+            with localcontext() as context:
+                context.prec = _DECIMAL_PRECISION
+                amount = self.amount * quantity
+        except InvalidOperation:
+            raise ValueError("Money amount is outside the supported decimal range.") from None
+        return Money(amount, self.currency)
 
     def to_wire_amount(self) -> str:
         """Write exactly three fractional digits because the public contract compares decimal strings."""

@@ -78,10 +78,10 @@ def safe_get_logger(name: str) -> logging.Logger | None:
         return None
 
 
-def safe_log(logger: logging.Logger | None, level: int, message: str, **fields: object) -> None:
+def safe_log(logger: logging.Logger | None, level: int, message: str, *args: object, **fields: object) -> None:
     """Emit structured fields while swallowing errors from an application logger."""
     if logger is None:
         return
     with suppress(Exception):
         event_id = fields.pop("event_id", None)
-        logger.log(level, message, extra={"event_id": event_id, **fields})
+        logger.log(level, message, *args, extra={"event_id": event_id, **fields})

@@ -8,14 +8,14 @@ pip install anis-partners
 uv add anis-partners
 ```
 
-- [Getting started](https://github.com/anis.partners-sdk-python/blob/main/docs/getting-started.md) — enrollment, configuration, first call, sync and async use
-- [Orders and recovery](https://github.com/anis.partners-sdk-python/blob/main/docs/orders-and-recovery.md) — read before placing an order
-- [Routes and permissions](https://github.com/anis.partners-sdk-python/blob/main/docs/routes-and-permissions.md) — routes, permissions, bodies, and limits
-- [Errors](https://github.com/anis.partners-sdk-python/blob/main/docs/errors.md) — stable error codes and typed exceptions
-- [Security and key custody](https://github.com/anis.partners-sdk-python/blob/main/docs/security.md)
-- [Observability](https://github.com/anis.partners-sdk-python/blob/main/docs/observability.md)
-- [Signing key cache](https://github.com/anis.partners-sdk-python/blob/main/docs/caching.md) — shared cache for multi-process applications
-- [Runnable sample](https://github.com/anis.partners-sdk-python/blob/main/samples/console/README.md)
+- [Getting started](https://github.com/anis-ly/anis.partners-sdk-python/blob/main/docs/getting-started.md) — enrollment, configuration, first call, sync and async use
+- [Orders and recovery](https://github.com/anis-ly/anis.partners-sdk-python/blob/main/docs/orders-and-recovery.md) — read before placing an order
+- [Routes and permissions](https://github.com/anis-ly/anis.partners-sdk-python/blob/main/docs/routes-and-permissions.md) — routes, permissions, bodies, and limits
+- [Errors](https://github.com/anis-ly/anis.partners-sdk-python/blob/main/docs/errors.md) — stable error codes and typed exceptions
+- [Security and key custody](https://github.com/anis-ly/anis.partners-sdk-python/blob/main/docs/security.md)
+- [Observability](https://github.com/anis-ly/anis.partners-sdk-python/blob/main/docs/observability.md)
+- [Signing key cache](https://github.com/anis-ly/anis.partners-sdk-python/blob/main/docs/caching.md) — shared cache for multi-process applications
+- [Runnable sample](https://github.com/anis-ly/anis.partners-sdk-python/blob/main/samples/console/README.md)
 
 ## Quick start
 
@@ -54,7 +54,7 @@ if __name__ == "__main__":
     asyncio.run(main())
 ```
 
-For order creation and recovery, persist the operation id and exact request before calling the SDK. See [Orders and recovery](https://github.com/anis.partners-sdk-python/blob/main/docs/orders-and-recovery.md) for the complete outcome rules.
+For order creation and recovery, persist the operation id and exact request before calling the SDK. See [Orders and recovery](https://github.com/anis-ly/anis.partners-sdk-python/blob/main/docs/orders-and-recovery.md) for the complete outcome rules.
 
 ## Refusals built into the design
 
@@ -68,11 +68,11 @@ Response verification cannot be disabled. If a read response cannot be verified,
 
 The SDK covers all 19 published routes across `profile`, `wallets`, `catalogue`, `orders`, `owned_cards`, and `diagnostics`, plus the enrollment client. Public errors are generated from the error catalogue. Request, response, safety-code, and enrollment vectors are tested along with signed in-memory client flows and contract drift checks.
 
-This package is at parity with the .NET SDK `Anis.Partners` 1.3.0. Supported Python versions are 3.11–3.14.
+This package follows the published Partner SDK contract. Supported Python versions are 3.11–3.14.
 
-### Proven live
+### Live verification
 
-Proven live: not yet. A live run is planned separately; vector and in-memory tests do not claim live-service certification.
+Verified end to end against a live Anis environment (October 2026).
 
 ## Regenerating error types
 
@@ -86,4 +86,4 @@ Do not edit the generated file by hand; the contract drift test checks it.
 
 ## License
 
-[MIT](https://github.com/anis.partners-sdk-python/blob/main/LICENSE) © 2026 Aniscom for Technical Services (Anis).
+[MIT](https://github.com/anis-ly/anis.partners-sdk-python/blob/main/LICENSE) © 2026 Aniscom for Technical Services (Anis).

@@ -11,6 +11,10 @@ from uuid import UUID
 
 JsonObject = Mapping[str, object]
 E = TypeVar("E", bound=StrEnum)
+_TIMESTAMP_TEXT = re.compile(
+    r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]+)?(?:Z|[+-][0-9]{2}:[0-9]{2})\Z"
+)
+_DATE_TEXT = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}\Z")
 
 
 def object_data(data: object) -> JsonObject:
@@ -77,15 +81,21 @@ def timestamp(value: object) -> datetime | None:
     if isinstance(value, datetime):
         parsed = value
     elif isinstance(value, str):
+        if not _TIMESTAMP_TEXT.fullmatch(value):
+            raise ValueError("A timestamp must be an ISO 8601 datetime.")
         try:
             parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
-        except ValueError as exc:
-            raise ValueError("A timestamp must be an ISO 8601 datetime.") from exc
+            parsed = parsed.astimezone(UTC)
+        except (ValueError, OverflowError):
+            raise ValueError("A timestamp must be an ISO 8601 datetime.") from None
     else:
         raise ValueError("A timestamp must be an ISO 8601 string or null.")
     if parsed.tzinfo is None or parsed.utcoffset() is None:
         raise ValueError("A timestamp must include a timezone.")
-    return parsed.astimezone(UTC)
+    try:
+        return parsed.astimezone(UTC)
+    except (ValueError, OverflowError):
+        raise ValueError("A timestamp must be an ISO 8601 datetime.") from None
 
 
 def calendar_date(value: object) -> date | None:
@@ -97,10 +107,12 @@ def calendar_date(value: object) -> date | None:
         return value
     if not isinstance(value, str):
         raise ValueError("A calendar date must be an ISO 8601 date string or null.")
+    if not _DATE_TEXT.fullmatch(value):
+        raise ValueError("A calendar date must be an ISO 8601 date string.")
     try:
         return date.fromisoformat(value)
-    except ValueError as exc:
-        raise ValueError("A calendar date must be an ISO 8601 date string.") from exc
+    except (ValueError, OverflowError):
+        raise ValueError("A calendar date must be an ISO 8601 date string.") from None
 
 
 def lenient_enum(enum_type: type[E], value: object, unknown: E) -> E:
@@ -116,7 +128,7 @@ def lenient_enum(enum_type: type[E], value: object, unknown: E) -> E:
 
 
 def model_json(instance: object) -> dict[str, object]:
-    """Serialize dataclass fields with .NET-compatible camelCase names and nested wire forms."""
+    """Serialize dataclass fields with the wire's camelCase names and nested forms."""
     if not is_dataclass(instance):
         raise TypeError("Only dataclass models can be serialized.")
     output: dict[str, object] = {}

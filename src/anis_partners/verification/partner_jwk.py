@@ -1,7 +1,7 @@
 """Parse rotating public keys and reject malformed material before it can authenticate a response."""
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from cryptography.hazmat.primitives.asymmetric import ec
 
@@ -27,7 +27,7 @@ class PartnerJwk:
     #: Published algorithm metadata when supplied.
     alg: str | None = None
     #: Signals disclosure or a forged document; any non-empty value makes the document untrusted.
-    d: str | None = None
+    d: str | None = field(default=None, repr=False)
 
     @classmethod
     def from_json(cls, data: object) -> "PartnerJwk":

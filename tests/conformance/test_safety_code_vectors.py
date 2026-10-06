@@ -31,6 +31,7 @@ def test_safety_code_vector_has_expected_thumbprint_and_code(path: Path) -> None
 def test_safety_code_vector_entries_have_declared_match_results(path: Path) -> None:
     """Check one vector's full set of accepted and refused user entries."""
     vector = read_vector(path)
+    assert vector["inputs"]
     for case in vector["inputs"]:
         assert SafetyCode.matches(case["entered"], vector["thumbprint"]) is case["matches"]
 

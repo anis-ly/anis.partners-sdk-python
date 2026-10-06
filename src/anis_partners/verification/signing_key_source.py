@@ -11,7 +11,7 @@ class SigningKeySource(Protocol):
     def get(self) -> SigningKeySet:
         """Reuse current keys or fetch them so every response is checked against a published version."""
 
-    def refresh(self) -> SigningKeySet:
+    def refresh(self, previous: SigningKeySet | None = None) -> SigningKeySet:
         """Refresh once after an unknown id so a legitimate rotation recovers without retry loops."""
 
 
@@ -21,5 +21,5 @@ class AsyncSigningKeySource(Protocol):
     async def get(self) -> SigningKeySet:
         """Reuse current keys or fetch them so every response is checked against a published version."""
 
-    async def refresh(self) -> SigningKeySet:
+    async def refresh(self, previous: SigningKeySet | None = None) -> SigningKeySet:
         """Refresh once after an unknown id so a legitimate rotation recovers without retry loops."""

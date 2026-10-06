@@ -13,6 +13,9 @@ requires-python = ">=3.11"
 authors = [{ name = "Aniscom for Technical Services (Anis)", email = "support@anis.ly" }]
 keywords = ["anis", "libya", "partner-api", "http-signatures", "rfc9421", "sdk"]
 classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Framework :: AsyncIO",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: 3.11",
@@ -31,6 +34,9 @@ dependencies = [
 [project.urls]
 Homepage = "https://developers.anis.ly"
 Documentation = "https://developers.anis.ly"
+Source = "https://github.com/anis-ly/anis.partners-sdk-python"
+Issues = "https://github.com/anis-ly/anis.partners-sdk-python/issues"
+Changelog = "https://github.com/anis-ly/anis.partners-sdk-python/blob/main/CHANGELOG.md"
 
 [dependency-groups]
 dev = [
@@ -43,9 +49,13 @@ dev = [
 [tool.hatch.build.targets.wheel]
 packages = ["src/anis_partners"]
 
+[tool.hatch.build.targets.sdist]
+only-include = ["src", "tests", "docs", "samples", "tools", "README.md", "LICENSE", "CHANGELOG.md", "contracts", "pyproject.toml"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra --strict-markers"
+filterwarnings = ["error"]
 
 [tool.mypy]
 strict = true

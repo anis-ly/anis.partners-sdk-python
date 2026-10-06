@@ -171,11 +171,12 @@ class PartnerResponseVerifier:
             safe_log(
                 self._logger,
                 logging.WARNING,
-                "unknown signing key; refreshing key document once",
+                "Unknown signing key %s; refreshing the key document once.",
+                context.parsed.key_id,
                 event_id=1006,
                 key_id=context.parsed.key_id,
             )
-            document = self._keys.refresh()
+            document = self._keys.refresh(document)
             key = _resolve(document, context.parsed.key_id)
         failure = _with_keys_phase(context, document, key)
         if failure is not None:
@@ -202,11 +203,12 @@ class AsyncPartnerResponseVerifier:
             safe_log(
                 self._logger,
                 logging.WARNING,
-                "unknown signing key; refreshing key document once",
+                "Unknown signing key %s; refreshing the key document once.",
+                context.parsed.key_id,
                 event_id=1006,
                 key_id=context.parsed.key_id,
             )
-            document = await self._keys.refresh()
+            document = await self._keys.refresh(document)
             key = _resolve(document, context.parsed.key_id)
         failure = _with_keys_phase(context, document, key)
         if failure is not None:

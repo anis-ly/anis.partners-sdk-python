@@ -3,6 +3,7 @@
 import pytest
 
 from anis_partners.signing.errors import RequestSigningError
+from anis_partners.signing.partner_request_signature_base import PartnerRequestSignatureBase
 from anis_partners.signing.partner_request_signer import PartnerRequestSigner
 from anis_partners.signing.signature_inputs import SignatureInputs
 from anis_partners.signing.signature_profile import SignatureProfile
@@ -56,6 +57,13 @@ def test_nonce_presence_must_match_the_selected_profile() -> None:
         signer.sign(SignatureProfile.SAFE_READ, inputs("nonce"), 10, 70)
     with pytest.raises(ValueError, match="nonce"):
         signer.sign(SignatureProfile.BODYLESS_NONCE_MUTATION, inputs(), 10, 70)
+
+
+@pytest.mark.parametrize("nonce", ["quote\u0085control", "quote\u009fcontrol"])
+def test_nonce_rejects_c1_control_characters(nonce: str) -> None:
+    """Prevent structured-field parsing differences for control characters outside ASCII C0."""
+    with pytest.raises(ValueError, match="nonce"):
+        PartnerRequestSignatureBase.parameters([], 10, 20, KEY_ID, nonce)
 
 
 def test_base_refuses_lifetime_longer_than_three_hundred_seconds() -> None:

@@ -12,7 +12,7 @@ The table lists the route, Python operation, required permission, signature styl
 | `catalogue.get_subcategory()` | `GET /v1/wallets/{walletId}/catalog/subcategories/{subcategoryId}` | `catalogue:read` | safe read | none | requests |
 | `catalogue.list_cards()` / `list_cards_page()` | `GET /v1/wallets/{walletId}/catalog/subcategories/{subcategoryId}/cards` | `catalogue:read` | safe read | none | requests |
 | `orders.create()` / `resume()` | `POST /v1/wallets/{walletId}/orders` | `orders:create` | order | order JSON | requests, orders |
-| `orders.get()` | `GET /v1/orders/{operationId}` | `orders:read`, or own-order permission | safe read | none | requests |
+| `orders.get()` | `GET /v1/orders/{operationId}` | `orders:read`, or `orders:create` for this application's own orders | safe read | none | requests |
 | `owned_cards.list()` / `list_page()` | `GET /v1/wallets/{walletId}/cards` | `cards:read` | safe read | none | requests |
 | `owned_cards.get()` | `GET /v1/wallets/{walletId}/cards/{soldCardId}` | `cards:read` | safe read | none | requests |
 | `owned_cards.reveal()` | `POST /v1/wallets/{walletId}/cards/{soldCardId}/reveal` | `cards:reveal` | nonce mutation | zero bytes | requests, reveals |
