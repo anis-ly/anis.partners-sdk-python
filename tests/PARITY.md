@@ -41,3 +41,5 @@
 `tests/docs/test_python_markdown_blocks.py::test_every_markdown_python_block_type_checks` → proves README and guide Python blocks type-check against the package.
 
 `tests/errors/test_exception_roundtrip.py` → proves public SDK errors and order results containing errors survive copy, deepcopy, and pickle operations.
+
+`tests/operations/test_selective_signing.py::test_answer_signing_is_set_per_route_exactly_as_the_gateway_publishes`, the sync and async `information_route_reads_its_unsigned_answer`, `unsigned_information_refusal_maps_to_its_typed_error`, and `signed_route_without_a_signature_is_refused` tests, and the unsigned order and enrollment tests → prove the nine information reads are read unsigned (with no key fetch) while every signed route, success or refusal, still fails with `signature_missing` when unsigned.

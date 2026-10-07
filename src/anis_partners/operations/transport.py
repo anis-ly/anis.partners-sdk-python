@@ -1,4 +1,4 @@
-"""Build frozen requests, verify complete answers, and expose one sync/async transport rule set."""
+"""Build frozen requests, verify signed routes' complete answers, and expose one sync/async transport rule set."""
 
 from __future__ import annotations
 
@@ -59,7 +59,11 @@ DOOR_REFUSAL_RESUME_DELAY = timedelta(seconds=60)
 
 @dataclass(frozen=True, slots=True)
 class RequestSpec:
-    """Keep the concrete URL separate from the route template used in telemetry."""
+    """Keep the concrete URL separate from the route template used in telemetry.
+
+    ``signs_response`` comes from the route table, never from the answer: a signed route's answer must verify,
+    and only a route the table marks unsigned is read without verification.
+    """
 
     method: str
     route: str
@@ -68,6 +72,7 @@ class RequestSpec:
     body: bytes | None = None
     operation_id: str | None = None
     authorization: str | None = dataclass_field(default=None, repr=False)
+    signs_response: bool = True
 
     def __repr__(self) -> str:
         """Keep the enrollment authorization token out of native request inspection."""
@@ -75,12 +80,12 @@ class RequestSpec:
         return (
             f"RequestSpec(method={self.method!r}, route={self.route!r}, path={self.path!r}, "
             f"profile={self.profile!r}, body={self.body!r}, operation_id={self.operation_id!r}, "
-            f"authorization={authorization!r})"
+            f"authorization={authorization!r}, signs_response={self.signs_response!r})"
         )
 
 
 class RequestCore:
-    """Apply identical signing, response verification, parsing, and refusal rules to both transports."""
+    """Apply identical signing, signed-route verification, parsing, and refusal rules to both transports."""
 
     def __init__(
         self,
@@ -234,18 +239,18 @@ class RequestCore:
         return request
 
     def parse(self, response: httpx.Response, body: bytes, reader: Callable[[object], T]) -> T:
-        """Turn verified bytes into a model only after the verifier has approved the full response."""
+        """Turn answer bytes into a model only after a signed route's verifier has approved the full response."""
         if not response.is_success:
             raise create_api_error(body, response.status_code, joined_headers(response))
         if not body or body.strip() == b"null":
-            raise MalformedResponseError(f"The verified Anis answer for HTTP {response.status_code} had no JSON body.")
+            raise MalformedResponseError(f"The Anis answer for HTTP {response.status_code} had no JSON body.")
         try:
             return reader(body)
         except AnisPartnersError:
             raise
         except Exception:
             model = getattr(reader, "__qualname__", "response model").split(".")[0]
-            raise MalformedResponseError(f"The verified Anis answer could not be read as {model}.") from None
+            raise MalformedResponseError(f"The Anis answer could not be read as {model}.") from None
 
     def verify(
         self,
@@ -254,7 +259,7 @@ class RequestCore:
         body: bytes,
         verifier: PartnerResponseVerifier | AsyncPartnerResponseVerifier,
     ) -> None:
-        """Verify buffered response bytes before a status or JSON body reaches operation code."""
+        """Verify a signed route's buffered response bytes before a status or JSON body reaches operation code."""
         if isinstance(verifier, AsyncPartnerResponseVerifier):
             raise TypeError("Use verify_async with the asynchronous response verifier.")
         verifier.verify(
@@ -377,7 +382,7 @@ class SyncTransport:
         self.verifier = verifier
 
     def send(self, spec: RequestSpec, reader: Callable[[object], T]) -> tuple[T, httpx.Response, bytes]:
-        """Send one prepared exchange and refuse it before parsing unless its complete answer verifies."""
+        """Send one prepared exchange; a signed route's answer is refused before parsing unless it fully verifies."""
         if self.core.closed:
             raise RequestSigningError("The client is closed; the request was not sent.")
         span_name = f"anis.partners {spec.route}"
@@ -401,7 +406,8 @@ class SyncTransport:
             try:
                 response = self.client.send(request, follow_redirects=False)
                 body = response.read()
-                self.core.verify(request, response, body, self.verifier)
+                if spec.signs_response:
+                    self.core.verify(request, response, body, self.verifier)
                 elapsed = (time.perf_counter() - started) * 1000
                 request_id = joined_headers(response).get("x-request-id")
                 if request_id:
@@ -461,7 +467,7 @@ class AsyncTransport:
         self.verifier = verifier
 
     async def send(self, spec: RequestSpec, reader: Callable[[object], T]) -> tuple[T, httpx.Response, bytes]:
-        """Await sending and key retrieval, preserving the shared verification and parsing order."""
+        """Await sending and, on a signed route, key retrieval, preserving the shared verification and parsing order."""
         if self.core.closed:
             raise RequestSigningError("The client is closed; the request was not sent.")
         span_name = f"anis.partners {spec.route}"
@@ -485,7 +491,8 @@ class AsyncTransport:
             try:
                 response = await self.client.send(request, follow_redirects=False)
                 body = await response.aread()
-                await self.core.verify_async(request, response, body, self.verifier)
+                if spec.signs_response:
+                    await self.core.verify_async(request, response, body, self.verifier)
                 elapsed = (time.perf_counter() - started) * 1000
                 request_id = joined_headers(response).get("x-request-id")
                 if request_id:

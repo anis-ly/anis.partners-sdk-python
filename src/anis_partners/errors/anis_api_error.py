@@ -1,4 +1,4 @@
-"""Partner-facing typed errors built from verified RFC 9457 responses."""
+"""Partner-facing typed errors built from RFC 9457 answers, verified first on every signed route."""
 
 from __future__ import annotations
 
@@ -87,7 +87,7 @@ class AnisApiError(AnisPartnersError):
 
 
 class MalformedResponseError(AnisPartnersError):
-    """Report a verified body that does not fit its model without exposing its contents or parser details."""
+    """Report an answer body that does not fit its model without exposing its contents or parser details."""
 
 
 class InsufficientBalanceError(AnisApiError):
@@ -184,7 +184,7 @@ def _header(headers: Mapping[str, str], name: str) -> str | None:
 
 
 def create_api_error(body: bytes, status: int, headers: Mapping[str, str]) -> AnisApiError:
-    """Map a verified refusal, falling back to internal_error when its RFC body cannot be read."""
+    """Map a refusal (verified when its route is signed), falling back to internal_error if its body is unreadable."""
     replayed = has_true_value(_header(headers, "Idempotency-Replayed"))
     retry_after_value = _header(headers, "Retry-After")
     retry_after = parse_retry_after(retry_after_value)

@@ -1,4 +1,4 @@
-"""Synchronous and asynchronous verified clients over caller-controlled HTTP transports."""
+"""Synchronous and asynchronous signing clients over caller-controlled HTTP transports."""
 
 from __future__ import annotations
 
@@ -34,7 +34,7 @@ from anis_partners.verification.partner_response_verifier import AsyncPartnerRes
 
 
 class AnisPartnersClient:
-    """Call the Partner API with signed requests and verified responses so untrusted bytes never reach models."""
+    """Sign every request; verify every answer on a signed route (orders, reveals, diagnostics) before parsing it."""
 
     def __init__(
         self,

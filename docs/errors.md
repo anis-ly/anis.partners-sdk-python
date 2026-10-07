@@ -73,13 +73,13 @@ The SDK's `ErrorCode` values come from `contracts/error-catalogue.json`; the tab
 
 The SDK also raises `EnrollmentKeyMismatchError` when the key thumbprint Anis returns differs from the submitted key. It is a local integrity error, not an API refusal.
 
-Catch `AnisPartnersError` to handle errors raised by the SDK itself. API refusals derive from it as `AnisApiError`; `RequestSigningError`, `UnverifiableResponseError`, `EnrollmentKeyMismatchError`, `KeyDocumentUnavailableError`, and `MalformedResponseError` do too. A malformed verified answer reports only the response model name: its body and JSON parser detail may contain card codes or other private values. Send the route, operation id where relevant, and verified request id to [support@anis.ly](mailto:support@anis.ly); never send card codes, tokens, or private keys.
+Catch `AnisPartnersError` to handle errors raised by the SDK itself. API refusals derive from it as `AnisApiError`; `RequestSigningError`, `UnverifiableResponseError`, `EnrollmentKeyMismatchError`, `KeyDocumentUnavailableError`, and `MalformedResponseError` do too. A malformed answer reports only the response model name: its body and JSON parser detail may contain card codes or other private values. Send the route, operation id where relevant, and verified request id to [support@anis.ly](mailto:support@anis.ly); never send card codes, tokens, or private keys.
 
 Invalid caller arguments raise `ValueError` or `TypeError` directly. For example, invalid UUID arguments name their Python parameter, and invalid order quantity or price arithmetic identifies `quantity`, `expected_unit_price`, or `expected_total`. `RequestSigningError` is reserved for request preparation failures after arguments pass validation, such as signer failures or serialization problems; neither kind is an unknown order outcome.
 
 ## Unverifiable answers are discarded
 
-`UnverifiableResponseError.failure` identifies why a response could not be trusted. The SDK discards its body before parsing. This is different from an API refusal: a refusal is a verified answer from Anis; an unverifiable answer has no trusted business meaning. For an order, the outcome is unknown and must be recovered using the same id. For a read, fix the cause and retry the read.
+`UnverifiableResponseError` is raised only on a signed route (orders, reveals, enrollment, and the signature self-test); the information reads are answered unsigned and are not verified. `UnverifiableResponseError.failure` identifies why a response could not be trusted; an answer on a signed route with no signature is `signature_missing`. The SDK discards its body before parsing. This is different from an API refusal: a refusal is an answer from Anis (verified, on a signed route); an unverifiable answer has no trusted business meaning. For an order, the outcome is unknown and must be recovered using the same id. For a read, fix the cause and retry the read.
 
 ## Retryable codes do not mean new order ids
 
