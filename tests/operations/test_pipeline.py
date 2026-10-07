@@ -75,8 +75,8 @@ def test_request_core_refuses_an_escaped_path_before_http_send() -> None:
         http.close()
 
 
-def test_sync_profile_is_signed_and_returns_only_verified_data() -> None:
-    """Check the client signs a safe read and waits for a valid published response key."""
+def test_sync_profile_request_is_signed_and_its_unsigned_answer_is_read() -> None:
+    """Sign the safe read as before; the profile answer is unsigned, so no response key is fetched."""
     wire = SignedMockWire(
         lambda request: WireAnswer(
             body=b'{"partner":{"id":"7c9e6679-7425-40de-944b-e07fc1f90ae7"},"application":{"id":"16fd2706-8baf-433b-82eb-8c7fada847da","scopes":["profile:read"]}}'
@@ -93,7 +93,7 @@ def test_sync_profile_is_signed_and_returns_only_verified_data() -> None:
         assert sent.headers["Accept-Encoding"] == "identity"
         assert "Nonce" not in sent.headers
         assert "Content-Digest" not in sent.headers
-        assert wire.key_document_requests == 1
+        assert wire.key_document_requests == 0
     finally:
         client.close()
         http.close()
@@ -242,7 +242,7 @@ def test_encoded_signed_response_is_discarded_before_parsing() -> None:
         lambda request: WireAnswer(
             200,
             gzip.compress(
-                b'{"partner":{"id":"7c9e6679-7425-40de-944b-e07fc1f90ae7"},"application":{"id":"16fd2706-8baf-433b-82eb-8c7fada847da","scopes":[]}}'
+                b'{"routeId":"signature-diagnostic","method":"POST","coveredComponents":[],"effectiveScopes":[]}'
             ),
             {"Content-Encoding": "gzip"},
         )
@@ -250,7 +250,7 @@ def test_encoded_signed_response_is_discarded_before_parsing() -> None:
     client, http = _client(wire)
     try:
         with pytest.raises(UnverifiableResponseError) as caught:
-            client.profile.get()
+            client.diagnostics.check_signature()
         assert caught.value.failure.value == "content_digest_mismatch"
     finally:
         client.close()
@@ -258,7 +258,7 @@ def test_encoded_signed_response_is_discarded_before_parsing() -> None:
 
 
 def test_redirect_from_injected_follow_redirects_client_is_not_followed() -> None:
-    """A signed 302 remains the answer even when the injected HTTPX client normally follows redirects."""
+    """A 302 remains the answer even when the injected HTTPX client normally follows redirects."""
     wire = SignedMockWire(lambda request: WireAnswer(302, b'{"type":"about:blank","title":"redirect","status":302}'))
     http = cast(httpx.Client, wire.client())
     http.follow_redirects = True

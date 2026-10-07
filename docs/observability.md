@@ -1,6 +1,6 @@
 # Observability
 
-The SDK uses the OpenTelemetry API, not an OpenTelemetry implementation. Add an SDK/exporter in your application when you want to export signals. Instrumentation uses the versioned scope `anis_partners` (`1.0.0`); logging uses the `anis_partners` logger and structured `event_id` extras. The optional client name defaults to `default` and labels client signals.
+The SDK uses the OpenTelemetry API, not an OpenTelemetry implementation. Add an SDK/exporter in your application when you want to export signals. Instrumentation uses the versioned scope `anis_partners` (`1.1.0`); logging uses the `anis_partners` logger and structured `event_id` extras. The optional client name defaults to `default` and labels client signals.
 
 ## Traces
 
@@ -12,9 +12,9 @@ Each request creates a client span named `anis.partners {route}` with span kind 
 | `anis.route` | Route template, without concrete resource ids |
 | `http.request.method` | HTTP method |
 | `anis.operation_id` | Caller-supplied order id, for order requests |
-| `http.response.status_code` | Verified response status |
+| `http.response.status_code` | Response status (verified on signed routes) |
 | `error.type` | Safe category such as `timeout`, `connection`, `signing`, or `unverifiable` |
-| `anis.error.code` | Stable code from a verified API refusal |
+| `anis.error.code` | Stable code from an API refusal |
 
 ## Metrics
 
@@ -26,9 +26,11 @@ Each request creates a client span named `anis.partners {route}` with span kind 
 | `anis.partners.order.outcomes` counter | `anis.client`, outcome; unknown outcomes may include `error.type` |
 | `anis.partners.signing_keys.fetches` counter | `anis.fetch.reason` (`first-use`, `expired`, or `refresh`) |
 
+Only answers on signed routes (orders, reveals, enrollment, and the signature self-test) are verified, so verification failures, discarded-response events, and signing-key fetches come only from those calls. The information reads are answered unsigned and never fetch the signing-key document.
+
 ## Logs
 
-Events use the `anis_partners` logger and put the stable numeric event id in `extra["event_id"]`. Events cover request completion (`1001`), verified refusals (`1002`), discarded responses (`1003`), order results (`1004`, `1008`), fetched signing keys (`1005`), key refresh after an unknown id (`1006`), and unanswered requests (`1007`). The fetched-key event is INFO and includes its refresh reason and published key count. Request completion and refusal records include route, method, status, request id, and stable error code where available. Request and operation ids are span attributes, not metric dimensions.
+Events use the `anis_partners` logger and put the stable numeric event id in `extra["event_id"]`. Events cover request completion (`1001`), refusals (`1002`), discarded responses (`1003`), order results (`1004`, `1008`), fetched signing keys (`1005`), key refresh after an unknown id (`1006`), and unanswered requests (`1007`). The fetched-key event is INFO and includes its refresh reason and published key count. Request completion and refusal records include route, method, status, request id, and stable error code where available. Request and operation ids are span attributes, not metric dimensions.
 
 `1008` identifies an unknown order outcome and says to resume with the same operation id, never a new one. The outcome counter records completed, processing, replayed, and unknown; definitive not-placed results are not counted as actionable order outcomes.
 

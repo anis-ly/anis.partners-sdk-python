@@ -1,6 +1,6 @@
 # Anis Partners for Python
 
-The Python client for the Anis Partner API. It signs every request, verifies every response, and gives each operation a typed result. The details that can cause duplicate purchases or expose unverified credentials are handled explicitly: caller-owned order ids, recovery outcomes, and response verification have no silent shortcuts.
+The Python client for the Anis Partner API. It signs every request, verifies every answer Anis signs, and gives each operation a typed result. The details that can cause duplicate purchases or expose unverified credentials are handled explicitly: caller-owned order ids, recovery outcomes, and response verification have no silent shortcuts.
 
 > **Disclaimer.** This SDK is an optional helper provided free of charge under the MIT License, "as is", without
 > warranty of any kind. Anis (Aniscom for Technical Services) accepts no responsibility or liability for its use or for
@@ -69,7 +69,9 @@ The caller supplies the order id. A dropped answer followed by a new id could bu
 
 An unknown result means the original sale may have completed. Resume with the same id and body. A new purchase uses a new id only after a definitive `OrderNotPlaced` result and a changed intent.
 
-Response verification cannot be disabled. If a read response cannot be verified, its body is discarded and `UnverifiableResponseError` is raised. An unverifiable order answer is `OrderOutcomeUnknown`, because the sale may already have completed.
+Anis signs the answers that move money, deliver card codes, or establish a key: order creation and order reads, both reveals, the four enrollment routes, and the signature self-test. On those routes every answer, success or refusal, is verified, and verification cannot be disabled. If such an answer cannot be verified — including one that arrives with no signature — its body is discarded and `UnverifiableResponseError` is raised. An unverifiable order answer is `OrderOutcomeUnknown`, because the sale may already have completed.
+
+The information reads — profile, wallets, the catalogue, and the owned-card list and read — are answered unsigned and read without verification. Which routes are signed is fixed per route in the SDK (`PartnerRoute.signs_response` in `PARTNER_ROUTES`); it is never decided by whether an answer happens to carry a signature. See [Routes and permissions](https://github.com/anis-ly/anis.partners-sdk-python/blob/main/docs/routes-and-permissions.md).
 
 ## What is covered
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Iterator
 from contextlib import contextmanager, suppress
+from typing import Any, cast
 
 from opentelemetry.trace import Span, SpanKind, Status, Tracer
 
@@ -27,8 +28,10 @@ class _SafeSpan:
 
     def set_attribute(self, name: str, value: object) -> None:
         """Set one bounded SDK attribute without allowing exporter code to affect the call."""
+        # Cast, not a narrower parameter type: OpenTelemetry's own annotation for the value changed between
+        # 1.45.0 and 1.45.1, so no single declared type satisfies both. The SDK only ever passes str and int.
         with suppress(Exception):
-            self._span.set_attribute(name, value)
+            self._span.set_attribute(name, cast(Any, value))
 
     def set_status(self, status: Status) -> None:
         """Set a bounded SDK status without allowing exporter code to affect the call."""

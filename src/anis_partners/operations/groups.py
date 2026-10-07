@@ -62,7 +62,7 @@ def _spec(
     operation_id: UUID | None = None,
     authorization: str | None = None,
 ) -> RequestSpec:
-    """Read signing policy from the frozen route table instead of inferring it from method or path text."""
+    """Read request signing and answer verification from the frozen route table, never from method, path, or answer."""
     try:
         descriptor = next((item for item in PARTNER_ROUTES if item.template == route and item.method == method), None)
         if descriptor is None:
@@ -75,6 +75,7 @@ def _spec(
             core.body_bytes(body),
             str(operation_id) if operation_id is not None else None,
             authorization,
+            descriptor.signs_response,
         )
     except RequestSigningError:
         raise
@@ -220,7 +221,7 @@ class SyncCatalogueOperations:
 
 
 class SyncOwnedCardOperations:
-    """Read masked card projections and reveal credentials only through explicit verified calls."""
+    """Read masked card projections, and reveal credentials only through explicit, signed, verified calls."""
 
     def __init__(self, transport: SyncTransport) -> None:
         self._transport = transport

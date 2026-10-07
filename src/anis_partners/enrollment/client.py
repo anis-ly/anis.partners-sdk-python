@@ -63,13 +63,21 @@ class EnrollmentKeyMismatchError(AnisPartnersError):
 def _enrollment_spec(
     core: RequestCore, method: str, template: str, path: str, body: object | None, token: str
 ) -> RequestSpec:
-    """Use the published unsigned route and token authorization; response verification remains mandatory."""
+    """Use the published token-authorized route; Anis signs every enrollment answer, so verification is mandatory."""
     from anis_partners.operations.routes import PARTNER_ROUTES
 
     route = next((item for item in PARTNER_ROUTES if item.method == method and item.template == template), None)
-    if route is None or route.profile is not None:
-        raise ValueError("Enrollment requests must use a published unsigned enrollment route.")
-    return RequestSpec(method, template, path, None, core.body_bytes(body), authorization=f"Enrollment {token}")
+    if route is None or route.profile is not None or not route.signs_response:
+        raise ValueError("Enrollment requests must use a published unsigned enrollment route with signed answers.")
+    return RequestSpec(
+        method,
+        template,
+        path,
+        None,
+        core.body_bytes(body),
+        authorization=f"Enrollment {token}",
+        signs_response=route.signs_response,
+    )
 
 
 class AnisEnrollmentClient:
