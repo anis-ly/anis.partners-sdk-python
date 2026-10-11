@@ -16,7 +16,7 @@
       "X-Request-Id": "01J9R2K8T4V6XQ0M3B7C5D9E1F",
       "Content-Digest": "sha-256=:epGQsVay09pY/GXv6MpAjMbsZ7VvobF1nAdylVo/mMk=:",
       "Signature-Input": "sig1=(\u0022@status\u0022 \u0022content-digest\u0022 \u0022x-request-id\u0022 \u0022signature-input\u0022;req \u0022signature\u0022;req);created=1789804800;keyid=\u0022partner-response-signing/v1-active\u0022;alg=\u0022rsa-pss-sha512\u0022;tag=\u0022anis-response-v2\u0022",
-      "Signature": "sig1=:5IhZOzlDiqEZLKFdhajS9wSPPyjfeMwbePazJmpoQPDUH1S2ax0N3PxfJlBkV6RqQQZeSHjXDyb7CytSi/yTwA==:"
+      "Signature": "sig1=:e2oaKm6lQeXGBbrUj6U66YvkhczsyPRoN3MsZnGY1BNMbIrpm8OrkV4o9qCVK6SgSJUG21MeV0wBOUW/sQzzwA==:"
     },
     "bodyBase64": "eyJwYXJ0bmVyIjp7ImlkIjoiN2M5ZTY2NzktNzQyNS00MGRlLTk0NGItZTA3ZmMxZjkwYWU3IiwibmFtZSI6IlBhcnRuZXIgTHRkIn0sImFwcGxpY2F0aW9uIjp7ImlkIjoiMTZmZDI3MDYtOGJhZi00MzNiLTgyZWItOGM3ZmFkYTg0N2RhIiwibmFtZSI6IlByb2R1Y3Rpb24gaW50ZWdyYXRpb24iLCJzY29wZXMiOlsicHJvZmlsZTpyZWFkIiwid2FsbGV0czpyZWFkIl19LCJkb2N1bWVudGF0aW9uVmVyc2lvbiI6IjIwMjYtMDcifQ==",
     "bodyUtf8": "{\u0022partner\u0022:{\u0022id\u0022:\u00227c9e6679-7425-40de-944b-e07fc1f90ae7\u0022,\u0022name\u0022:\u0022Partner Ltd\u0022},\u0022application\u0022:{\u0022id\u0022:\u002216fd2706-8baf-433b-82eb-8c7fada847da\u0022,\u0022name\u0022:\u0022Production integration\u0022,\u0022scopes\u0022:[\u0022profile:read\u0022,\u0022wallets:read\u0022]},\u0022documentationVersion\u0022:\u00222026-07\u0022}"

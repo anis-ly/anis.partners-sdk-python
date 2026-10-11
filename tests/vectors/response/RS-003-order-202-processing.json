@@ -19,7 +19,7 @@
       "Retry-After": "5",
       "Cache-Control": "no-store",
       "Signature-Input": "sig1=(\u0022@status\u0022 \u0022content-digest\u0022 \u0022x-request-id\u0022 \u0022signature-input\u0022;req \u0022signature\u0022;req \u0022location\u0022 \u0022retry-after\u0022 \u0022cache-control\u0022);created=1789804800;keyid=\u0022partner-response-signing/v1-active\u0022;alg=\u0022ecdsa-p256-sha256\u0022;tag=\u0022anis-response-v2\u0022",
-      "Signature": "sig1=:XP4O3Dv4n96lbDkeSi4mJ9nM5GHK1QTmy6/GVXI26PKe4W0nOeUhR7Ik8vJrCqvI1\u002B6HQymEDihHVS4RR4FU2Q==:"
+      "Signature": "sig1=:mT9OQ1t6W2Bq7t5GM/LP3wppMlXMK0I6YCIn\u002Bl8OSvyIuPw1MdwOcxv3lyNUXuPHQ6Azee0jb8QjZrzhgCorYQ==:"
     },
     "bodyBase64": "eyJvcGVyYXRpb25JZCI6IjliMmU0ZjE3LTNjNmEtNGQ1OC1iMGUxLTdhNWM4ZDJmNmIzNCIsInN0YXR1cyI6InByb2Nlc3NpbmciLCJ3YWxsZXRJZCI6IjJmMWM4YTk0LTZkMzctNGU1Mi1iOGExLTBjOWU1ZDNmN2IyNiIsImNhcmRJZCI6IjhkNGIxZTczLTlhMjUtNGM2MC04ZjM3LTZiMmU5ZDVhMWM0OCIsInF1YW50aXR5IjoyfQ==",
     "bodyUtf8": "{\u0022operationId\u0022:\u00229b2e4f17-3c6a-4d58-b0e1-7a5c8d2f6b34\u0022,\u0022status\u0022:\u0022processing\u0022,\u0022walletId\u0022:\u00222f1c8a94-6d37-4e52-b8a1-0c9e5d3f7b26\u0022,\u0022cardId\u0022:\u00228d4b1e73-9a25-4c60-8f37-6b2e9d5a1c48\u0022,\u0022quantity\u0022:2}"

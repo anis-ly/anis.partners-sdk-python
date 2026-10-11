@@ -115,7 +115,7 @@
     },
     {
       "id": "RS-001-safe-read-profile-200-M15",
-      "title": "Request binding absent from the client's own request",
+      "title": "Request binding absent from the client\u0027s own request",
       "route": "GET /v1/profile",
       "outcome": "reject",
       "reason": "covered_components_mismatch"
@@ -207,14 +207,14 @@
     {
       "id": "RS-005-reveal-200",
       "title": "Single credential reveal, 200, no-store",
-      "route": "POST /v1/wallets/{walletId}/cards/{soldCardId}/reveal",
+      "route": "POST /v1/wallets/{walletId}/owned-cards/{soldCardId}/reveal",
       "outcome": "accept",
       "reason": null
     },
     {
       "id": "RS-005-reveal-200-M01",
       "title": "Cache-Control: no-store stripped",
-      "route": "POST /v1/wallets/{walletId}/cards/{soldCardId}/reveal",
+      "route": "POST /v1/wallets/{walletId}/owned-cards/{soldCardId}/reveal",
       "outcome": "reject",
       "reason": "covered_components_mismatch"
     },
@@ -263,7 +263,7 @@
     {
       "id": "RS-010-invoice-reveal-200",
       "title": "Invoice reveal, 200, no-store",
-      "route": "POST /v1/wallets/{walletId}/invoices/{invoiceId}/cards/reveal",
+      "route": "POST /v1/wallets/{walletId}/invoices/{invoiceId}/owned-cards/reveal",
       "outcome": "accept",
       "reason": null
     },
@@ -297,7 +297,7 @@
     },
     {
       "id": "RS-105-published-key-coordinate-not-32-bytes",
-      "title": "Published key's y coordinate is 31 bytes",
+      "title": "Published key\u0027s y coordinate is 31 bytes",
       "route": "GET /.well-known/partner-signing-keys.json",
       "outcome": "reject",
       "reason": "key_rejected"

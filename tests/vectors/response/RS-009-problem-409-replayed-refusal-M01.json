@@ -17,7 +17,7 @@
       "Content-Digest": "sha-256=:WqEhxJ\u002BH477fx2HQ1\u002B6\u002BI8/34KBqOphwIZ2RF0QNEDI=:",
       "Cache-Control": "no-store",
       "Signature-Input": "sig1=(\u0022@status\u0022 \u0022content-digest\u0022 \u0022x-request-id\u0022 \u0022signature-input\u0022;req \u0022signature\u0022;req \u0022idempotency-replayed\u0022 \u0022cache-control\u0022);created=1789804800;keyid=\u0022partner-response-signing/v1-active\u0022;alg=\u0022ecdsa-p256-sha256\u0022;tag=\u0022anis-response-v2\u0022",
-      "Signature": "sig1=:2Sm7gfX5a\u002BfH9garLqP04Xez7fv54D4Y3siQVRyP4HhErfKkpGqXrijnfGLLmZvzxQZHx5yybGazqa/PzJLxEA==:"
+      "Signature": "sig1=:qULGCb36Sbn4LAKfnXgr7c5CBaXl5sZhk6mjaeti4AZz/aDXtrkEKsXN2MFFjAU8hrSzTcoF4MP2B5d\u002BzBzu5A==:"
     },
     "bodyBase64": "eyJ0eXBlIjoiaHR0cHM6Ly9kZXZlbG9wZXJzLmFuaXMubHkvZXJyb3JzL2luc3VmZmljaWVudC1iYWxhbmNlIiwidGl0bGUiOiJJbnN1ZmZpY2llbnQgYmFsYW5jZSIsInN0YXR1cyI6NDA5LCJjb2RlIjoiaW5zdWZmaWNpZW50X2JhbGFuY2UiLCJyZXF1ZXN0SWQiOiIwMUo5UjJLOFQ0VjZYUTBNM0I3QzVEOUUxRiJ9",
     "bodyUtf8": "{\u0022type\u0022:\u0022https://developers.anis.ly/errors/insufficient-balance\u0022,\u0022title\u0022:\u0022Insufficient balance\u0022,\u0022status\u0022:409,\u0022code\u0022:\u0022insufficient_balance\u0022,\u0022requestId\u0022:\u002201J9R2K8T4V6XQ0M3B7C5D9E1F\u0022}"

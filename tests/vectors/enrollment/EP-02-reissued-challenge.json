@@ -1,10 +1,9 @@
 {
-  "notice": "Test data. The keys in these vectors are test keys — never Anis’s or any partner’s real keys — and partners.anis.ly is an example address.",
   "id": "EP-02-reissued-challenge",
   "title": "Possession proof after a challenge re-issue",
   "description": "A re-issued challenge increments the generation, and the generation is part of the signed message, so a proof over generation 1 cannot answer generation 2. The number is written in invariant decimal.",
   "key": {
-    "privateKeyPkcs8Base64": "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgyIpGK3RErH7j8NIijtNQ18k1tgiJBfxXcJ/qX+dZdzahRANCAASZ08XDV443a7dWnaQlMgX8dHIShU8Ta3IMgBcb2/O4nNvjoDQD0pcOP5uDAIq72HMqwK/+X0kbY4X8J7QRc7xK",
+    "privateKeyPkcs8Base64": "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgyIpGK3RErH7j8NIijtNQ18k1tgiJBfxXcJ/qX\u002BdZdzahRANCAASZ08XDV443a7dWnaQlMgX8dHIShU8Ta3IMgBcb2/O4nNvjoDQD0pcOP5uDAIq72HMqwK/\u002BX0kbY4X8J7QRc7xK",
     "publicJwk": {
       "kty": "EC",
       "crv": "P-256",
@@ -26,8 +25,14 @@
     "proofRequest": {
       "keyId": "3f2a9c14-8d6e-4b21-9f07-5c8ab2d61e43",
       "challengeGeneration": 2,
-      "signature": "<non-deterministic: sign proofMessage and verify under publicJwk>"
+      "signature": "\u003Cnon-deterministic: sign proofMessage and verify under publicJwk\u003E"
     }
   },
-  "exampleSignature": "01vo7CaIs3PWsinExPLMYLh_JvMAluCwQYAPleyV1D92hU4xjwb0Gd97M6p-1ueTsybf1UJBegFX8SOQl5_EtQ"
+  "exampleSignature": "_s-DXwAthRnbLn6cK125s-BhJOnGhGmJfIEEZ7aMMciu2WoHQ7xBWl1MF_jbUEhQAbdWWQa-syh8jHnLVcuglA",
+  "crossValidation": {
+    "thumbprintComputedByCommands": true,
+    "commandsRebuiltIdenticalMessage": true,
+    "verifiedByCommandsProofVerification": true,
+    "derEncodingRefusedByCommands": true
+  }
 }

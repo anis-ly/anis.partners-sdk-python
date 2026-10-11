@@ -1,10 +1,9 @@
 {
-  "notice": "Test data. The keys in these vectors are test keys — never Anis’s or any partner’s real keys — and partners.anis.ly is an example address.",
   "id": "EP-01-first-challenge",
   "title": "Possession proof over the first challenge",
-  "description": "The proof is NOT a signature over the challenge. It signs a domain-separated message built from values both sides hold — Anis stores only the challenge's hash — joined by \\n with none after the last line: the separator, the keyId in lower-case D form, the generation, the lower-case hex SHA-256 of the challenge's UTF-8 bytes, and the thumbprint Anis returned. P1363, 64 bytes, base64url without padding.",
+  "description": "The proof is NOT a signature over the challenge. It signs a domain-separated message built from values both sides hold \u2014 Anis stores only the challenge\u0027s hash \u2014 joined by \\n with none after the last line: the separator, the keyId in lower-case D form, the generation, the lower-case hex SHA-256 of the challenge\u0027s UTF-8 bytes, and the thumbprint Anis returned. P1363, 64 bytes, base64url without padding.",
   "key": {
-    "privateKeyPkcs8Base64": "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgyIpGK3RErH7j8NIijtNQ18k1tgiJBfxXcJ/qX+dZdzahRANCAASZ08XDV443a7dWnaQlMgX8dHIShU8Ta3IMgBcb2/O4nNvjoDQD0pcOP5uDAIq72HMqwK/+X0kbY4X8J7QRc7xK",
+    "privateKeyPkcs8Base64": "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgyIpGK3RErH7j8NIijtNQ18k1tgiJBfxXcJ/qX\u002BdZdzahRANCAASZ08XDV443a7dWnaQlMgX8dHIShU8Ta3IMgBcb2/O4nNvjoDQD0pcOP5uDAIq72HMqwK/\u002BX0kbY4X8J7QRc7xK",
     "publicJwk": {
       "kty": "EC",
       "crv": "P-256",
@@ -26,8 +25,14 @@
     "proofRequest": {
       "keyId": "3f2a9c14-8d6e-4b21-9f07-5c8ab2d61e43",
       "challengeGeneration": 1,
-      "signature": "<non-deterministic: sign proofMessage and verify under publicJwk>"
+      "signature": "\u003Cnon-deterministic: sign proofMessage and verify under publicJwk\u003E"
     }
   },
-  "exampleSignature": "g8e7tJHHTuGbf-7rmT-A40gdh0uxbI2ErV57fOKQbiOWmZFAXOqOuRFc112wnxtYONXrKgXkySPyL4ezICS0BQ"
+  "exampleSignature": "LC6o7gwCI4AmXQrNfdiACpYReyGe2a_WBScjedMxlMCGPHpGNNMOEZmCXmcMF01MVHTRtjSPd2Le0j3z0Tae3A",
+  "crossValidation": {
+    "thumbprintComputedByCommands": true,
+    "commandsRebuiltIdenticalMessage": true,
+    "verifiedByCommandsProofVerification": true,
+    "derEncodingRefusedByCommands": true
+  }
 }
