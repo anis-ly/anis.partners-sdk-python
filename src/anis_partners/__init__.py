@@ -43,6 +43,8 @@ from anis_partners.errors import (
 )
 from anis_partners.models import (
     ApplicationIdentity,
+    CardClassification,
+    CardSummary,
     CatalogueCard,
     CatalogueCategory,
     CatalogueCategoryType,
@@ -55,8 +57,6 @@ from anis_partners.models import (
     EnrollmentStatus,
     LocalizedText,
     MaskedCard,
-    MaskedCardProduct,
-    MaskedCardSubcategory,
     Money,
     Order,
     OrderCompleted,
@@ -76,6 +76,7 @@ from anis_partners.models import (
     SignatureDiagnostic,
     Wallet,
 )
+from anis_partners.models.access import ApplicationSuspended, KeyRevoked
 from anis_partners.operations import PARTNER_ROUTES, PartnerRoute
 from anis_partners.options import AcceptLanguage, ClientOptions
 from anis_partners.signing import (
@@ -96,7 +97,9 @@ from anis_partners.verification import (
     KeyDocumentCache,
     PartnerJwk,
     PartnerSigningKeySet,
+    PublishedSigningKey,
     ResponseVerificationFailure,
+    RevokedSigningKey,
     SigningKeySet,
     SigningKeySource,
     UnverifiableResponseError,
@@ -115,6 +118,7 @@ __all__ = [
     "AnisPartnersClient",
     "AnisPartnersError",
     "ApplicationIdentity",
+    "ApplicationSuspended",
     "AsyncAnisEnrollmentClient",
     "AsyncAnisPartnersClient",
     "AsyncHttpSigningKeySource",
@@ -123,6 +127,8 @@ __all__ = [
     "AsyncRequestSigner",
     "AsyncSigningKeySource",
     "AuthorizationError",
+    "CardClassification",
+    "CardSummary",
     "CatalogueCard",
     "CatalogueCategory",
     "CatalogueCategoryType",
@@ -146,13 +152,12 @@ __all__ = [
     "InvalidCredentialsError",
     "KeyDocumentCache",
     "KeyDocumentUnavailableError",
+    "KeyRevoked",
     "KeyedSigner",
     "LimitExceededError",
     "LocalizedText",
     "MalformedResponseError",
     "MaskedCard",
-    "MaskedCardProduct",
-    "MaskedCardSubcategory",
     "Money",
     "NonceFactory",
     "Order",
@@ -176,6 +181,7 @@ __all__ = [
     "PemP256Signer",
     "PriceChangedError",
     "Problem",
+    "PublishedSigningKey",
     "RandomNonceFactory",
     "RateLimitedError",
     "ReplayDetectedError",
@@ -185,6 +191,7 @@ __all__ = [
     "ResponseVerificationFailure",
     "RevealedCredential",
     "RevealedCredentialCollection",
+    "RevokedSigningKey",
     "SafetyCode",
     "SignatureDiagnostic",
     "SigningKeySet",

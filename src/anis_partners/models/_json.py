@@ -134,7 +134,9 @@ def model_json(instance: object) -> dict[str, object]:
     output: dict[str, object] = {}
     for item in fields(instance):
         value = getattr(instance, item.name)
-        if value is None:
+        if value is None or value == "":
+            continue
+        if is_dataclass(value) and not wire_value(value):
             continue
         output[camel_case(item.name)] = wire_value(value)
     return output

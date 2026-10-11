@@ -29,12 +29,13 @@ GATEWAY_UNSIGNED_ROUTES: tuple[tuple[str, re.Pattern[str]], ...] = tuple(
         ("GET", r"/v1/profile"),
         ("GET", r"/v1/wallets"),
         ("GET", rf"/v1/wallets/{_ID}"),
+        ("GET", rf"/v1/wallets/{_ID}/catalog/cards/{_ID}"),
         ("GET", rf"/v1/wallets/{_ID}/catalog/categories"),
         ("GET", rf"/v1/wallets/{_ID}/catalog/categories/{_ID}/subcategories"),
         ("GET", rf"/v1/wallets/{_ID}/catalog/subcategories/{_ID}"),
-        ("GET", rf"/v1/wallets/{_ID}/catalog/subcategories/{_ID}/cards"),
-        ("GET", rf"/v1/wallets/{_ID}/cards"),
-        ("GET", rf"/v1/wallets/{_ID}/cards/{_ID}"),
+        ("GET", rf"/v1/wallets/{_ID}/catalog/subcategories/{_ID}/owned-cards"),
+        ("GET", rf"/v1/wallets/{_ID}/owned-cards"),
+        ("GET", rf"/v1/wallets/{_ID}/owned-cards/{_ID}"),
     )
 )
 
@@ -93,6 +94,8 @@ class SignedMockWire:
                         "kty": "EC",
                         "crv": "P-256",
                         "kid": RESPONSE_KEY_ID,
+                        "status": "active",
+                        "notBefore": "2026-01-01T00:00:00Z",
                         "x": encode(numbers.x.to_bytes(32, "big")),
                         "y": encode(numbers.y.to_bytes(32, "big")),
                     }
@@ -115,6 +118,7 @@ class SignedMockWire:
             headers.get("retry-after"),
             headers.get("idempotency-replayed"),
             headers.get("cache-control"),
+            request.headers.get("Signature"),
         )
         created = int(datetime.now(UTC).timestamp())
         params = parameters(parts, created, RESPONSE_KEY_ID)

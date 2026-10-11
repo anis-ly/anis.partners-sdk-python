@@ -6,6 +6,9 @@ Every partner request is signed, on every partner route; enrollment requests car
 
 | Python call | Route | Permission | Request signed as | Answer | Body | Counts toward |
 |---|---|---|---|---|---|---|
+| `access.suspend_application(reason)` | `POST /v1/application/suspend` | no scope required | nonce mutation | signed, verified | `{"reason":"…"}` | requests |
+| `access.revoke_key(key_id, reason)` | `POST /v1/keys/{keyId}/revoke` | no scope required | nonce mutation | signed, verified | `{"reason":"…"}` | requests |
+| `catalogue.get_card(wallet_id, card_id)` | `GET /v1/wallets/{walletId}/catalog/cards/{cardId}` | `catalogue:read` | safe read | unsigned, not verified | none | requests |
 | `profile.get()` | `GET /v1/profile` | `profile:read` | safe read | unsigned, not verified | none | requests |
 | `wallets.list()` / `list_page()` | `GET /v1/wallets` | `wallets:read` | safe read | unsigned, not verified | none | requests |
 | `wallets.get(wallet_id)` | `GET /v1/wallets/{walletId}` | `wallets:read` | safe read | unsigned, not verified | none | requests |
@@ -15,10 +18,10 @@ Every partner request is signed, on every partner route; enrollment requests car
 | `catalogue.list_cards()` / `list_cards_page()` | `GET /v1/wallets/{walletId}/catalog/subcategories/{subcategoryId}/cards` | `catalogue:read` | safe read | unsigned, not verified | none | requests |
 | `orders.create()` / `resume()` | `POST /v1/wallets/{walletId}/orders` | `orders:create` | order | signed, verified | order JSON | requests, orders |
 | `orders.get()` | `GET /v1/orders/{operationId}` | `orders:read`, or `orders:create` for this application's own orders | safe read | signed, verified | none | requests |
-| `owned_cards.list()` / `list_page()` | `GET /v1/wallets/{walletId}/cards` | `cards:read` | safe read | unsigned, not verified | none | requests |
-| `owned_cards.get()` | `GET /v1/wallets/{walletId}/cards/{soldCardId}` | `cards:read` | safe read | unsigned, not verified | none | requests |
-| `owned_cards.reveal()` | `POST /v1/wallets/{walletId}/cards/{soldCardId}/reveal` | `cards:reveal` | nonce mutation | signed, verified | zero bytes | requests, reveals |
-| `owned_cards.reveal_invoice()` | `POST /v1/wallets/{walletId}/invoices/{invoiceId}/cards/reveal` | `cards:reveal` | nonce mutation | signed, verified | zero bytes | requests, reveals |
+| `owned_cards.list()` / `list_page()` | `GET /v1/wallets/{walletId}/owned-cards` | `cards:read` | safe read | unsigned, not verified | none | requests |
+| `owned_cards.get()` | `GET /v1/wallets/{walletId}/owned-cards/{soldCardId}` | `cards:read` | safe read | unsigned, not verified | none | requests |
+| `owned_cards.reveal()` | `POST /v1/wallets/{walletId}/owned-cards/{soldCardId}/reveal` | `cards:reveal` | nonce mutation | signed, verified | zero bytes | requests, reveals |
+| `owned_cards.reveal_invoice()` | `POST /v1/wallets/{walletId}/invoices/{invoiceId}/owned-cards/reveal` | `cards:reveal` | nonce mutation | signed, verified | zero bytes | requests, reveals |
 | `diagnostics.check_signature()` | `POST /v1/diagnostics/signature` | `diagnostics:use` | nonce mutation | signed, verified | exactly `{}` | requests |
 | `AnisEnrollmentClient.get()` | `GET /v1/enrollments/{invitationId}` | enrollment token | unsigned | signed, verified | none | — |
 | `AnisEnrollmentClient.submit_key()` | `POST /v1/enrollments/{invitationId}/keys` | enrollment token | unsigned | signed, verified | public key | — |
@@ -31,3 +34,5 @@ The `list()` methods follow every cursor page. Use the matching `list_*_page()` 
 The two reveal routes send no body, though the empty body digest is signed. The signature diagnostic sends `{}`. A proxy or middleware that adds a body or changes signed headers can cause refusal.
 
 An address outside the network agreed with Anis and a missing permission may share the same `insufficient_scope` response. A missing or inaccessible resource may also share a response. This keeps the answer from revealing access policy.
+
+Catalogue `minimumQuantity` is always 1; `maximumQuantity` is the platform order limit (100).

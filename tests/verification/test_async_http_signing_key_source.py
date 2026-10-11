@@ -135,7 +135,14 @@ async def test_async_refresh_waiters_share_the_rotation_fetch() -> None:
         if calls > 1:
             refresh_entered.set()
             await asyncio.sleep(0.03)
-        return httpx.Response(200, json={"keys": [{"kid": str(calls), "x": "AA", "y": "AA"}]})
+        return httpx.Response(
+            200,
+            json={
+                "keys": [
+                    {"kid": str(calls), "x": "AA", "y": "AA", "status": "active", "notBefore": "2026-01-01T00:00:00Z"}
+                ]
+            },
+        )
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
         source = AsyncHttpSigningKeySource(client, "https://partners.anis.ly")

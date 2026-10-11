@@ -2,10 +2,12 @@
 
 import json
 from dataclasses import dataclass, field
+from datetime import datetime
 
 from cryptography.hazmat.primitives.asymmetric import ec
 
 from anis_partners._internal.base64url import decode
+from anis_partners.models._json import object_data, text, timestamp
 
 
 @dataclass(frozen=True, slots=True)
@@ -66,12 +68,72 @@ class PartnerJwk:
         ).public_key()
 
 
+def _lifecycle_date(value: object) -> datetime | None:
+    """Keep invalid lifecycle dates unavailable so the matched key fails with key_rejected."""
+    try:
+        return timestamp(value)
+    except (ValueError, TypeError, OverflowError):
+        return None
+
+
+@dataclass(frozen=True, slots=True)
+class PublishedSigningKey(PartnerJwk):
+    """Attach the signing lifecycle without loosening enrollment's public JWK."""
+
+    status: str | None = None
+    not_before: datetime | None = None
+    retired_at: datetime | None = None
+
+    @classmethod
+    def from_json(cls, data: object) -> "PublishedSigningKey":
+        """Read lifecycle timestamps used to reject signatures outside a version's signing window."""
+        value = object_data(data)
+        jwk = PartnerJwk.from_json(value)
+        raw_status = value.get("status")
+        status = raw_status if isinstance(raw_status, str) else None
+        not_before = _lifecycle_date(value.get("notBefore"))
+        retired_at = _lifecycle_date(value.get("retiredAt"))
+        return cls(jwk.kty, jwk.crv, jwk.x, jwk.y, jwk.kid, jwk.use, jwk.alg, jwk.d, status, not_before, retired_at)
+
+    def to_json(self) -> dict[str, object]:
+        """Preserve lifecycle metadata when a published key is serialized."""
+        from anis_partners.models._json import wire_timestamp
+
+        value = PartnerJwk.to_json(self)
+        if self.status is not None:
+            value["status"] = self.status
+        if self.not_before is not None:
+            value["notBefore"] = wire_timestamp(self.not_before)
+        if self.retired_at is not None:
+            value["retiredAt"] = wire_timestamp(self.retired_at)
+        return value
+
+
+@dataclass(frozen=True, slots=True)
+class RevokedSigningKey:
+    """Identify a compromised version independently from available public keys."""
+
+    kid: str
+    compromised_at: datetime
+
+    @classmethod
+    def from_json(cls, data: object) -> "RevokedSigningKey":
+        """Require the identity and compromise timestamp from each revocation entry."""
+        value = object_data(data)
+        kid = text(value.get("kid"))
+        compromised_at = timestamp(value.get("compromisedAt"))
+        if not kid or compromised_at is None:
+            raise ValueError("Revoked keys require kid and compromisedAt.")
+        return cls(kid, compromised_at)
+
+
 @dataclass(frozen=True, slots=True)
 class SigningKeySet:
     """Retain rotation versions together so responses issued just before or after rotation remain verifiable."""
 
-    #: Active, next, and retiring keys needed to verify responses across a rotation boundary.
-    keys: tuple[PartnerJwk, ...] = ()
+    #: Active, next, and retired keys needed to verify responses across a rotation boundary.
+    keys: tuple[PublishedSigningKey, ...] = ()
+    revoked: tuple[RevokedSigningKey, ...] = ()
 
     @classmethod
     def from_json(cls, document: str | bytes) -> "SigningKeySet":
@@ -79,8 +141,11 @@ class SigningKeySet:
         value = json.loads(document)
         if not isinstance(value, dict) or not isinstance(value.get("keys", []), list):
             raise ValueError("The signing key document must contain a keys array.")
-        parsed_keys = [PartnerJwk.from_json(item) for item in value.get("keys", [])]
-        return cls(tuple(parsed_keys))
+        parsed_keys = [PublishedSigningKey.from_json(item) for item in value.get("keys", [])]
+        revoked = value.get("revoked", [])
+        if not isinstance(revoked, list):
+            raise ValueError("The signing key document revoked member must be an array.")
+        return cls(tuple(parsed_keys), tuple(RevokedSigningKey.from_json(item) for item in revoked))
 
 
 PartnerSigningKeySet = SigningKeySet

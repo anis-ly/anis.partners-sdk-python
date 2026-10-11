@@ -29,6 +29,7 @@ from anis_partners.errors import (
 )
 
 DECISIONS: dict[str, tuple[type[AnisApiError], OrderRefusalOutcome]] = {
+    "key_not_revocable": (AnisApiError, OrderRefusalOutcome.NOT_PLACED),
     "insufficient_balance": (InsufficientBalanceError, OrderRefusalOutcome.NOT_PLACED),
     "price_changed": (PriceChangedError, OrderRefusalOutcome.NOT_PLACED),
     "quantity_unavailable": (OutOfStockError, OrderRefusalOutcome.NOT_PLACED),

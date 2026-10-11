@@ -15,8 +15,7 @@ class Wallet:
 
     id: UUID = dataclass_field(default_factory=lambda: UUID(int=0))
     name: str | None = None
-    currency: str | None = None
-    balance: Money = dataclass_field(default_factory=lambda: Money(Decimal("0.000"), ""))
+    balance: Money = dataclass_field(default_factory=lambda: Money(Decimal("0.000"), "LYD"))
 
     @classmethod
     def from_json(cls, data: object) -> "Wallet":
@@ -26,8 +25,9 @@ class Wallet:
         return cls(
             identifier(field(value, "id")),
             text(field(value, "name")),
-            text(field(value, "currency")),
-            Money.from_json(balance) if balance is not None else Money.from_json({"amount": "0.000", "currency": ""}),
+            Money.from_json(balance)
+            if balance is not None
+            else Money.from_json({"amount": "0.000", "currency": "LYD"}),
         )
 
     def to_json(self) -> dict[str, object]:

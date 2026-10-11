@@ -38,6 +38,28 @@ class LocalizedText:
         return model_json(self)
 
 
+@dataclass(frozen=True, slots=True)
+class CardClassification:
+    """Identify a card category or subcategory without exposing credential data."""
+
+    id: UUID = dataclass_field(default_factory=lambda: UUID(int=0))
+    name: LocalizedText | None = None
+
+    @classmethod
+    def from_json(cls, data: object) -> "CardClassification":
+        """Read the classification identity and optional localized label."""
+        value = object_data(data)
+        name = field(value, "name")
+        return cls(
+            identifier(field(value, "id")),
+            LocalizedText.from_json(name) if name is not None else None,
+        )
+
+    def to_json(self) -> dict[str, object]:
+        """Write the exact camelCase card projection members."""
+        return model_json(self)
+
+
 class CatalogueCategoryType(StrEnum):
     """Represent category source without failing when Anis adds a future source type."""
 
@@ -131,6 +153,8 @@ class CatalogueCard:
     available: bool = False
     minimum_quantity: int | None = None
     maximum_quantity: int | None = None
+    logo: str | None = None
+    category: CardClassification | None = None
 
     @classmethod
     def from_json(cls, data: object) -> "CatalogueCard":
@@ -154,6 +178,8 @@ class CatalogueCard:
             boolean(field(value, "available")),
             integer(field(value, "minimumQuantity")) if field(value, "minimumQuantity") is not None else None,
             integer(field(value, "maximumQuantity")) if field(value, "maximumQuantity") is not None else None,
+            text(field(value, "logo")),
+            CardClassification.from_json(value["category"]) if value.get("category") is not None else None,
         )
 
     def to_json(self) -> dict[str, object]:

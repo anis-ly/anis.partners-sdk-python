@@ -40,10 +40,12 @@ TOKEN = "-".join(("enrollment", "test", "token"))
 
 #: The gateway's published lists (anis.partners-consumers-gateway README "Response signing"), written out here.
 SIGNED_ROUTES = {
+    ("POST", "/v1/application/suspend"),
+    ("POST", "/v1/keys/{keyId}/revoke"),
     ("POST", "/v1/wallets/{walletId}/orders"),
     ("GET", "/v1/orders/{operationId}"),
-    ("POST", "/v1/wallets/{walletId}/cards/{soldCardId}/reveal"),
-    ("POST", "/v1/wallets/{walletId}/invoices/{invoiceId}/cards/reveal"),
+    ("POST", "/v1/wallets/{walletId}/owned-cards/{soldCardId}/reveal"),
+    ("POST", "/v1/wallets/{walletId}/invoices/{invoiceId}/owned-cards/reveal"),
     ("GET", "/v1/enrollments/{invitationId}"),
     ("POST", "/v1/enrollments/{invitationId}/keys"),
     ("POST", "/v1/enrollments/{invitationId}/proof"),
@@ -51,6 +53,7 @@ SIGNED_ROUTES = {
     ("POST", "/v1/diagnostics/signature"),
 }
 UNSIGNED_ROUTES = {
+    ("GET", "/v1/wallets/{walletId}/catalog/cards/{cardId}"),
     ("GET", "/v1/profile"),
     ("GET", "/v1/wallets"),
     ("GET", "/v1/wallets/{walletId}"),
@@ -58,8 +61,8 @@ UNSIGNED_ROUTES = {
     ("GET", "/v1/wallets/{walletId}/catalog/categories/{categoryId}/subcategories"),
     ("GET", "/v1/wallets/{walletId}/catalog/subcategories/{subcategoryId}"),
     ("GET", "/v1/wallets/{walletId}/catalog/subcategories/{subcategoryId}/cards"),
-    ("GET", "/v1/wallets/{walletId}/cards"),
-    ("GET", "/v1/wallets/{walletId}/cards/{soldCardId}"),
+    ("GET", "/v1/wallets/{walletId}/owned-cards"),
+    ("GET", "/v1/wallets/{walletId}/owned-cards/{soldCardId}"),
     ("GET", "/.well-known/partner-signing-keys.json"),
 }
 
@@ -73,11 +76,16 @@ _WALLET = (
 )
 _PAGE = b'{"items":[],"nextCursor":null}'
 _SUBCATEGORY = b'{"id":"22222222-2222-2222-2222-222222222222","categoryId":"11111111-1111-1111-1111-111111111111"}'
-_MASKED_CARD = b'{"id":"4a6c2e81-7b39-4d15-a2f8-3e7b9c1d5046"}'
+_MASKED_CARD = b'{"soldCardId":"4a6c2e81-7b39-4d15-a2f8-3e7b9c1d5046"}'
 
 #: One call per information route; the same callable serves both clients because their operation names match.
 Call = Callable[[Any], Any]
 INFORMATION_CALLS: list[tuple[str, Call, bytes]] = [
+    (
+        f"/v1/wallets/{WALLET}/catalog/cards/{CARD_SOLD}",
+        lambda client: client.catalogue.get_card(WALLET, CARD_SOLD),
+        b'{"id":"4a6c2e81-7b39-4d15-a2f8-3e7b9c1d5046"}',
+    ),
     ("/v1/profile", lambda client: client.profile.get(), _PROFILE),
     ("/v1/wallets", lambda client: client.wallets.list_page(), _PAGE),
     (f"/v1/wallets/{WALLET}", lambda client: client.wallets.get(WALLET), _WALLET),
@@ -101,17 +109,26 @@ INFORMATION_CALLS: list[tuple[str, Call, bytes]] = [
         lambda client: client.catalogue.list_cards_page(WALLET, SUBCATEGORY),
         _PAGE,
     ),
-    (f"/v1/wallets/{WALLET}/cards", lambda client: client.owned_cards.list_page(WALLET), _PAGE),
-    (f"/v1/wallets/{WALLET}/cards/{CARD_SOLD}", lambda client: client.owned_cards.get(WALLET, CARD_SOLD), _MASKED_CARD),
+    (f"/v1/wallets/{WALLET}/owned-cards", lambda client: client.owned_cards.list_page(WALLET), _PAGE),
+    (
+        f"/v1/wallets/{WALLET}/owned-cards/{CARD_SOLD}",
+        lambda client: client.owned_cards.get(WALLET, CARD_SOLD),
+        _MASKED_CARD,
+    ),
 ]
 _INFORMATION_IDS = [path for path, _, _ in INFORMATION_CALLS]
 
 #: Signed partner reads and mutations whose answers must verify; the order is covered separately below.
 SIGNED_CALLS: list[tuple[str, Call]] = [
+    ("/v1/application/suspend", lambda client: client.access.suspend_application("Stop access")),
+    (f"/v1/keys/{CARD_SOLD}/revoke", lambda client: client.access.revoke_key(CARD_SOLD, "Stop access")),
     (f"/v1/orders/{OPERATION}", lambda client: client.orders.get(OPERATION)),
-    (f"/v1/wallets/{WALLET}/cards/{CARD_SOLD}/reveal", lambda client: client.owned_cards.reveal(WALLET, CARD_SOLD)),
     (
-        f"/v1/wallets/{WALLET}/invoices/{CARD_SOLD}/cards/reveal",
+        f"/v1/wallets/{WALLET}/owned-cards/{CARD_SOLD}/reveal",
+        lambda client: client.owned_cards.reveal(WALLET, CARD_SOLD),
+    ),
+    (
+        f"/v1/wallets/{WALLET}/invoices/{CARD_SOLD}/owned-cards/reveal",
         lambda client: client.owned_cards.reveal_invoice(WALLET, CARD_SOLD),
     ),
     ("/v1/diagnostics/signature", lambda client: client.diagnostics.check_signature()),

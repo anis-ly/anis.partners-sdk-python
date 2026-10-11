@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Partner V1 public API",
-    "version": "1.0.0",
+    "version": "2.0.0",
     "description": "Reduced copy of the Anis Partner API contract: the route map and the signing kind of each route, which is all the SDK drift tests read. The complete reference is https://developers.anis.ly/openapi.json."
   },
   "paths": {
@@ -69,28 +69,28 @@
         }
       }
     },
-    "/v1/wallets/{walletId}/cards": {
+    "/v1/wallets/{walletId}/owned-cards": {
       "get": {
         "x-anis-route": {
           "requestKind": "safeRead"
         }
       }
     },
-    "/v1/wallets/{walletId}/cards/{soldCardId}": {
+    "/v1/wallets/{walletId}/owned-cards/{soldCardId}": {
       "get": {
         "x-anis-route": {
           "requestKind": "safeRead"
         }
       }
     },
-    "/v1/wallets/{walletId}/cards/{soldCardId}/reveal": {
+    "/v1/wallets/{walletId}/owned-cards/{soldCardId}/reveal": {
       "post": {
         "x-anis-route": {
           "requestKind": "bodylessNonceMutation"
         }
       }
     },
-    "/v1/wallets/{walletId}/invoices/{invoiceId}/cards/reveal": {
+    "/v1/wallets/{walletId}/invoices/{invoiceId}/owned-cards/reveal": {
       "post": {
         "x-anis-route": {
           "requestKind": "bodylessNonceMutation"
@@ -136,6 +136,27 @@
       "get": {
         "x-anis-route": {
           "requestKind": "public"
+        }
+      }
+    },
+    "/v1/application/suspend": {
+      "post": {
+        "x-anis-route": {
+          "requestKind": "bodylessNonceMutation"
+        }
+      }
+    },
+    "/v1/keys/{keyId}/revoke": {
+      "post": {
+        "x-anis-route": {
+          "requestKind": "bodylessNonceMutation"
+        }
+      }
+    },
+    "/v1/wallets/{walletId}/catalog/cards/{cardId}": {
+      "get": {
+        "x-anis-route": {
+          "requestKind": "safeRead"
         }
       }
     }

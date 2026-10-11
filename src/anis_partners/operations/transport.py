@@ -30,6 +30,7 @@ from anis_partners.errors.base import KeyDocumentUnavailableError
 from anis_partners.models._json import wire_value
 from anis_partners.models.orders import CreateOrderRequest, Order, OrderResult
 from anis_partners.observability.telemetry import (
+    USER_AGENT,
     order_outcomes,
     request_duration,
     signature_duration,
@@ -119,7 +120,7 @@ class RequestCore:
         """Freeze bytes and set each signature header once so retries cannot append stale signatures."""
         url = self.options.authority.rstrip("/") + "/" + spec.path.lstrip("/")
         body = spec.body
-        headers: dict[str, str] = {"Accept-Encoding": "identity"}
+        headers: dict[str, str] = {"Accept-Encoding": "identity", "User-Agent": USER_AGENT}
         if self.options.accept_language is not AcceptLanguage.UNSPECIFIED:
             headers["Accept-Language"] = self.options.accept_language.value
         if spec.authorization is not None:
@@ -264,7 +265,11 @@ class RequestCore:
             raise TypeError("Use verify_async with the asynchronous response verifier.")
         verifier.verify(
             VerifiableResponse(
-                response.status_code, joined_headers(response), body, request.headers.get("Signature-Input")
+                response.status_code,
+                joined_headers(response),
+                body,
+                request.headers.get("Signature-Input"),
+                request.headers.get("Signature"),
             )
         )
 
@@ -274,7 +279,11 @@ class RequestCore:
         """Await only the key source; verification decisions remain the shared verifier's pure rules."""
         await verifier.verify(
             VerifiableResponse(
-                response.status_code, joined_headers(response), body, request.headers.get("Signature-Input")
+                response.status_code,
+                joined_headers(response),
+                body,
+                request.headers.get("Signature-Input"),
+                request.headers.get("Signature"),
             )
         )
 

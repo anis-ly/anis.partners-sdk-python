@@ -1,4 +1,4 @@
-# Anis Partners for Python
+# Anis Partners for Python 2.0.0
 
 The Python client for the Anis Partner API. It signs every request, verifies every answer Anis signs, and gives each operation a typed result. The details that can cause duplicate purchases or expose unverified credentials are handled explicitly: caller-owned order ids, recovery outcomes, and response verification have no silent shortcuts.
 
@@ -10,9 +10,9 @@ The Python client for the Anis Partner API. It signs every request, verifies eve
 > https://developers.anis.ly.
 
 ```bash
-pip install anis-partners
+pip install anis-partners==2.0.0
 # or
-uv add anis-partners
+uv add anis-partners==2.0.0
 ```
 
 - [Getting started](https://github.com/anis-ly/anis.partners-sdk-python/blob/main/docs/getting-started.md) — enrollment, configuration, first call, sync and async use
@@ -37,6 +37,8 @@ with AnisPartnersClient(options, signer) as anis:
     wallets = list(anis.wallets.list())  # follows every cursor page
     print(profile.application.id if profile.application else "No application")
     print(f"Found {len(wallets)} wallets")
+    if wallets:
+        print(wallets[0].balance.currency)
 ```
 
 The async client returns the same results. Run the whole flow inside an event loop:
@@ -69,13 +71,13 @@ The caller supplies the order id. A dropped answer followed by a new id could bu
 
 An unknown result means the original sale may have completed. Resume with the same id and body. A new purchase uses a new id only after a definitive `OrderNotPlaced` result and a changed intent.
 
-Anis signs the answers that move money, deliver card codes, or establish a key: order creation and order reads, both reveals, the four enrollment routes, and the signature self-test. On those routes every answer, success or refusal, is verified, and verification cannot be disabled. If such an answer cannot be verified — including one that arrives with no signature — its body is discarded and `UnverifiableResponseError` is raised. An unverifiable order answer is `OrderOutcomeUnknown`, because the sale may already have completed.
+Anis signs the answers that move money, deliver card codes, or establish a key: order creation and order reads, both reveals, application suspension, key revocation, the four enrollment routes, and the signature self-test. On those routes every answer, success or refusal, is verified, and verification cannot be disabled. If such an answer cannot be verified — including one that arrives with no signature — its body is discarded and `UnverifiableResponseError` is raised. An unverifiable order answer is `OrderOutcomeUnknown`, because the sale may already have completed.
 
 The information reads — profile, wallets, the catalogue, and the owned-card list and read — are answered unsigned and read without verification. Which routes are signed is fixed per route in the SDK (`PartnerRoute.signs_response` in `PARTNER_ROUTES`); it is never decided by whether an answer happens to carry a signature. See [Routes and permissions](https://github.com/anis-ly/anis.partners-sdk-python/blob/main/docs/routes-and-permissions.md).
 
 ## What is covered
 
-The SDK covers all 19 published routes across `profile`, `wallets`, `catalogue`, `orders`, `owned_cards`, and `diagnostics`, plus the enrollment client. Public errors are generated from the error catalogue. Request, response, safety-code, and enrollment vectors are tested along with signed in-memory client flows and contract drift checks.
+The SDK covers all 22 published routes across `access`, `profile`, `wallets`, `catalogue`, `orders`, `owned_cards`, and `diagnostics`, plus the enrollment client. Public errors are generated from the error catalogue. Request, response, safety-code, and enrollment vectors are tested along with signed in-memory client flows and contract drift checks.
 
 This package follows the published Partner SDK contract. Supported Python versions are 3.11–3.14.
 
@@ -96,3 +98,11 @@ Do not edit the generated file by hand; the contract drift test checks it.
 ## License
 
 [MIT](https://github.com/anis-ly/anis.partners-sdk-python/blob/main/LICENSE) © 2026 Aniscom for Technical Services (Anis).
+
+## 2.0.0 API shapes
+
+Use `anis.catalogue.get_card(wallet_id, card_id)` for one wallet-priced catalogue card. Owned cards use `anis.owned_cards` and `/owned-cards` paths. A `MaskedCard` exposes `sold_card_id`, `operation_id`, and a shared `CardSummary` at `card`; face value, logo, subcategory and category belong to that summary. Reveals and order `sold_cards` carry the full `RevealedCredential` with the same summary. Wallet currency is `wallet.balance.currency`.
+
+Self-service stops return signed state: `anis.access.suspend_application(reason)` and `anis.access.revoke_key(key_id, reason)`. Reasons are required and trimmed to 1–500 characters. Resume is staff-only; a revoked key never works again. Both stop calls use a fresh nonce and a body digest without an idempotency key.
+
+1.x is deprecated — upgrade to 2.0.0.

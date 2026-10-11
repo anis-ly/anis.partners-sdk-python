@@ -9,7 +9,7 @@ from anis_partners.models._json import field, object_data, text, timestamp, wire
 
 _SCALE = Decimal("0.001")
 _DECIMAL_PRECISION = 29
-_AMOUNT_TEXT = re.compile(r"-?[0-9]+(?:\.[0-9]+)?\Z")
+_AMOUNT_TEXT = re.compile(r"[0-9]+\.[0-9]{3}\Z")
 _AMOUNT_ERROR = "Anis amounts have at most three decimal places"
 
 
@@ -28,8 +28,12 @@ class Money:
             raise TypeError("Money amounts must be Decimal values.")
         if not isinstance(self.currency, str):
             raise TypeError("Money currency must be a string.")
+        if not re.fullmatch(r"[A-Z]{3}", self.currency):
+            raise ValueError("Money currency must be three uppercase letters.")
         if not self.amount.is_finite():
             raise ValueError("Money amount must be a finite decimal value.")
+        if self.amount < 0:
+            raise ValueError("Money amount must not be negative.")
         if _decimal_places(self.amount) > 3:
             raise ValueError("Anis amounts have at most three decimal places")
         try:
@@ -54,6 +58,10 @@ class Money:
         amount = field(value, "amount")
         if not isinstance(amount, str):
             raise ValueError("Money amount must be a decimal string, never a JSON number.")
+        if amount == "-0.000":
+            raise ValueError("Negative zero is not a valid Anis amount.")
+        if re.fullmatch(r"[0-9]+\.[0-9]{4,}", amount):
+            raise ValueError(_AMOUNT_ERROR)
         if not _AMOUNT_TEXT.fullmatch(amount):
             raise ValueError("Money amount must be plain decimal text.")
         try:

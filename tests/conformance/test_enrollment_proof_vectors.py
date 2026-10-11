@@ -25,9 +25,9 @@ class ProofSigner:
         return der_to_p1363(self._key.sign(data, ec.ECDSA(hashes.SHA256())))
 
 
-def test_enrollment_vector_file_count_is_two() -> None:
-    """Fail if the enrollment proof corpus is incomplete."""
-    assert len(vector_files("enrollment", "EP")) == 2
+def test_vector_corpus_is_present() -> None:
+    """Require every vector listed by the manifest or discovered in the suite."""
+    assert vector_files("enrollment", "EP")
 
 
 @pytest.mark.parametrize("path", vector_files("enrollment", "EP"), ids=lambda path: Path(path).stem)

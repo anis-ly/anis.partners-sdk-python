@@ -16,10 +16,11 @@ from cryptography.hazmat.primitives.asymmetric import ec
 
 from anis_partners._internal.clock import Clock, SystemClock
 from anis_partners._internal.telemetry import safe_get_logger, safe_log
+from anis_partners.models._json import timestamp
 from anis_partners.signing.ecdsa_signature_format import p1363_to_der
 from anis_partners.verification.errors import UnverifiableResponseError
 from anis_partners.verification.failures import ResponseVerificationFailure as Failure
-from anis_partners.verification.partner_jwk import PartnerJwk, SigningKeySet
+from anis_partners.verification.partner_jwk import PublishedSigningKey, SigningKeySet
 from anis_partners.verification.partner_response_signature_base import (
     ALGORITHM,
     MAX_AGE_SECONDS,
@@ -52,7 +53,7 @@ def _signature_bytes(value: str) -> bytes | None:
     return decoded if base64.b64encode(decoded).decode("ascii") == raw else None
 
 
-def _resolve(keys: SigningKeySet, key_id: str) -> PartnerJwk | None:
+def _resolve(keys: SigningKeySet, key_id: str) -> PublishedSigningKey | None:
     """Find the published version named by a response."""
     return next((key for key in keys.keys if key.kid == key_id and key.x and key.y), None)
 
@@ -80,6 +81,8 @@ def _pre_key_phase(response: VerifiableResponse, now: datetime) -> tuple[_PreKey
         return None, Failure.LABEL_UNEXPECTED
     if parsed.algorithm is not None and parsed.algorithm != ALGORITHM:
         return None, Failure.ALGORITHM_NOT_SUPPORTED
+    if parsed.tag != "anis-response-v2":
+        return None, Failure.PROFILE_UNEXPECTED
     digest = _header(response, "Content-Digest")
     if not digest:
         return None, Failure.CONTENT_DIGEST_MISMATCH
@@ -98,11 +101,14 @@ def _pre_key_phase(response: VerifiableResponse, now: datetime) -> tuple[_PreKey
         _header(response, "Retry-After"),
         _header(response, "Idempotency-Replayed"),
         _header(response, "Cache-Control"),
+        response.request_signature,
     )
     expected = tuple(part.identifier.replace('"', "") for part in parts)
     if expected != parsed.identifiers:
         return None, Failure.COVERED_COMPONENTS_MISMATCH
-    if any(identifier.endswith(";req") for identifier in parsed.identifiers) and not response.request_signature_input:
+    if any(identifier.endswith(";req") for identifier in parsed.identifiers) and (
+        not response.request_signature_input or not response.request_signature
+    ):
         return None, Failure.COVERED_COMPONENTS_MISMATCH
     if now.tzinfo is None or now.utcoffset() is None:
         raise ValueError("The verification clock must return an aware UTC datetime.")
@@ -112,12 +118,39 @@ def _pre_key_phase(response: VerifiableResponse, now: datetime) -> tuple[_PreKey
     return _PreKeyContext(parsed, parts, signature), None
 
 
-def _with_keys_phase(context: _PreKeyContext, keys: SigningKeySet, key: PartnerJwk | None) -> Failure | None:
+def _lifecycle_timestamp(value: object) -> float | None:
+    """Require an aware, parseable, finite lifecycle instant even for host-provided key sources."""
+    try:
+        parsed = timestamp(value)
+        if parsed is None:
+            return None
+        instant = parsed.timestamp()
+        return instant if math.isfinite(instant) else None
+    except (ValueError, TypeError, OverflowError):
+        return None
+
+
+def _with_keys_phase(context: _PreKeyContext, keys: SigningKeySet, key: PublishedSigningKey | None) -> Failure | None:
     """Apply key-document, signature encoding, key import, and cryptographic checks."""
+    if any(candidate.kid == context.parsed.key_id for candidate in keys.revoked):
+        return Failure.KEY_COMPROMISED
     if any(candidate.d for candidate in keys.keys):
         return Failure.KEY_REJECTED
     if key is None:
         return Failure.UNKNOWN_KEY
+    if key.status not in {"active", "next", "retired"}:
+        return Failure.KEY_REJECTED
+    not_before = _lifecycle_timestamp(key.not_before)
+    if not_before is None:
+        return Failure.KEY_REJECTED
+    if key.status == "retired":
+        retired_at = _lifecycle_timestamp(key.retired_at)
+        if retired_at is None:
+            return Failure.KEY_REJECTED
+        if context.parsed.created > retired_at:
+            return Failure.KEY_RETIRED
+    if key.status == "next" and context.parsed.created < not_before:
+        return Failure.KEY_NOT_YET_VALID
     raw_signature = _signature_bytes(context.signature)
     if raw_signature is None or len(raw_signature) != 64:
         return Failure.SIGNATURE_MALFORMED
@@ -167,7 +200,7 @@ class PartnerResponseVerifier:
             raise UnverifiableResponseError(failure or Failure.SIGNATURE_MALFORMED)
         document = self._keys.get()
         key = _resolve(document, context.parsed.key_id)
-        if key is None:
+        if key is None and not any(item.kid == context.parsed.key_id for item in document.revoked):
             safe_log(
                 self._logger,
                 logging.WARNING,
@@ -199,7 +232,7 @@ class AsyncPartnerResponseVerifier:
             raise UnverifiableResponseError(failure or Failure.SIGNATURE_MALFORMED)
         document = await self._keys.get()
         key = _resolve(document, context.parsed.key_id)
-        if key is None:
+        if key is None and not any(item.kid == context.parsed.key_id for item in document.revoked):
             safe_log(
                 self._logger,
                 logging.WARNING,
