@@ -1,0 +1,348 @@
+{
+  "profile": "anis-response-v2",
+  "algorithm": "ecdsa-p256-sha256",
+  "label": "sig1",
+  "generatedFrom": "anis.partners-consumers-gateway PartnerResponseSigner / PartnerSignatureBase",
+  "skewSeconds": 60,
+  "total": 48,
+  "accept": 14,
+  "reject": 34,
+  "vectors": [
+    {
+      "id": "RS-001-safe-read-profile-200",
+      "title": "Safe read, 200, no semantic headers",
+      "route": "GET /v1/profile",
+      "outcome": "accept",
+      "reason": null
+    },
+    {
+      "id": "RS-001-safe-read-profile-200-M01",
+      "title": "One body byte changed",
+      "route": "GET /v1/profile",
+      "outcome": "reject",
+      "reason": "content_digest_mismatch"
+    },
+    {
+      "id": "RS-001-safe-read-profile-200-M02",
+      "title": "Content-Digest rewritten",
+      "route": "GET /v1/profile",
+      "outcome": "reject",
+      "reason": "content_digest_mismatch"
+    },
+    {
+      "id": "RS-001-safe-read-profile-200-M03",
+      "title": "Status rewritten to 201",
+      "route": "GET /v1/profile",
+      "outcome": "reject",
+      "reason": "signature_invalid"
+    },
+    {
+      "id": "RS-001-safe-read-profile-200-M04",
+      "title": "X-Request-Id rewritten",
+      "route": "GET /v1/profile",
+      "outcome": "reject",
+      "reason": "signature_invalid"
+    },
+    {
+      "id": "RS-001-safe-read-profile-200-M05",
+      "title": "Signature bit flipped",
+      "route": "GET /v1/profile",
+      "outcome": "reject",
+      "reason": "signature_invalid"
+    },
+    {
+      "id": "RS-001-safe-read-profile-200-M06",
+      "title": "Signature truncated to 32 bytes",
+      "route": "GET /v1/profile",
+      "outcome": "reject",
+      "reason": "signature_malformed"
+    },
+    {
+      "id": "RS-001-safe-read-profile-200-M07",
+      "title": "Signature re-encoded as DER",
+      "route": "GET /v1/profile",
+      "outcome": "reject",
+      "reason": "signature_malformed"
+    },
+    {
+      "id": "RS-001-safe-read-profile-200-M08",
+      "title": "Signature header absent",
+      "route": "GET /v1/profile",
+      "outcome": "reject",
+      "reason": "signature_missing"
+    },
+    {
+      "id": "RS-001-safe-read-profile-200-M09",
+      "title": "Signature-Input header absent",
+      "route": "GET /v1/profile",
+      "outcome": "reject",
+      "reason": "signature_missing"
+    },
+    {
+      "id": "RS-001-safe-read-profile-200-M10",
+      "title": "Algorithm switched",
+      "route": "GET /v1/profile",
+      "outcome": "reject",
+      "reason": "algorithm_not_supported"
+    },
+    {
+      "id": "RS-001-safe-read-profile-200-M11",
+      "title": "Signature label changed",
+      "route": "GET /v1/profile",
+      "outcome": "reject",
+      "reason": "label_unexpected"
+    },
+    {
+      "id": "RS-001-safe-read-profile-200-M12",
+      "title": "keyid names an unpublished version",
+      "route": "GET /v1/profile",
+      "outcome": "reject",
+      "reason": "unknown_key"
+    },
+    {
+      "id": "RS-001-safe-read-profile-200-M13",
+      "title": "Validly signed over a REDUCED component set",
+      "route": "GET /v1/profile",
+      "outcome": "reject",
+      "reason": "covered_components_mismatch"
+    },
+    {
+      "id": "RS-001-safe-read-profile-200-M14",
+      "title": "Request binding names a different request",
+      "route": "GET /v1/profile",
+      "outcome": "reject",
+      "reason": "signature_invalid"
+    },
+    {
+      "id": "RS-001-safe-read-profile-200-M15",
+      "title": "Request binding absent from the client's own request",
+      "route": "GET /v1/profile",
+      "outcome": "reject",
+      "reason": "covered_components_mismatch"
+    },
+    {
+      "id": "RS-001-safe-read-profile-200-M16",
+      "title": "created far outside the freshness window",
+      "route": "GET /v1/profile",
+      "outcome": "reject",
+      "reason": "created_out_of_window"
+    },
+    {
+      "id": "RS-001-safe-read-profile-200-M17",
+      "title": "created at the edge of the window, still inside",
+      "route": "GET /v1/profile",
+      "outcome": "accept",
+      "reason": null
+    },
+    {
+      "id": "RS-001-safe-read-profile-200-M18",
+      "title": "Uncovered Location added",
+      "route": "GET /v1/profile",
+      "outcome": "reject",
+      "reason": "covered_components_mismatch"
+    },
+    {
+      "id": "RS-001-safe-read-profile-200-M19",
+      "title": "Response tag absent",
+      "route": "GET /v1/profile",
+      "outcome": "reject",
+      "reason": "profile_unexpected"
+    },
+    {
+      "id": "RS-001-safe-read-profile-200-M20",
+      "title": "Response tag names another profile",
+      "route": "GET /v1/profile",
+      "outcome": "reject",
+      "reason": "profile_unexpected"
+    },
+    {
+      "id": "RS-001-safe-read-profile-200-M21",
+      "title": "Request Signature differs from the signed binding",
+      "route": "GET /v1/profile",
+      "outcome": "reject",
+      "reason": "signature_invalid"
+    },
+    {
+      "id": "RS-002-order-201-created",
+      "title": "Order created, 201, Location and no-store",
+      "route": "POST /v1/wallets/{walletId}/orders",
+      "outcome": "accept",
+      "reason": null
+    },
+    {
+      "id": "RS-002-order-201-created-M01",
+      "title": "Covered Location stripped",
+      "route": "POST /v1/wallets/{walletId}/orders",
+      "outcome": "reject",
+      "reason": "covered_components_mismatch"
+    },
+    {
+      "id": "RS-003-order-202-processing",
+      "title": "Order accepted, 202, Location and Retry-After",
+      "route": "POST /v1/wallets/{walletId}/orders",
+      "outcome": "accept",
+      "reason": null
+    },
+    {
+      "id": "RS-003-order-202-processing-M01",
+      "title": "Retry-After rewritten",
+      "route": "POST /v1/wallets/{walletId}/orders",
+      "outcome": "reject",
+      "reason": "signature_invalid"
+    },
+    {
+      "id": "RS-004-order-201-replayed",
+      "title": "Order repeated after completion, 201, Idempotency-Replayed true",
+      "route": "POST /v1/wallets/{walletId}/orders",
+      "outcome": "accept",
+      "reason": null
+    },
+    {
+      "id": "RS-004-order-201-replayed-M01",
+      "title": "Idempotency-Replayed stripped",
+      "route": "POST /v1/wallets/{walletId}/orders",
+      "outcome": "reject",
+      "reason": "covered_components_mismatch"
+    },
+    {
+      "id": "RS-005-reveal-200",
+      "title": "Single credential reveal, 200, no-store",
+      "route": "POST /v1/wallets/{walletId}/cards/{soldCardId}/reveal",
+      "outcome": "accept",
+      "reason": null
+    },
+    {
+      "id": "RS-005-reveal-200-M01",
+      "title": "Cache-Control: no-store stripped",
+      "route": "POST /v1/wallets/{walletId}/cards/{soldCardId}/reveal",
+      "outcome": "reject",
+      "reason": "covered_components_mismatch"
+    },
+    {
+      "id": "RS-006-problem-429-rate-limited",
+      "title": "Prepared rate-limit Problem, 429, Retry-After without no-store",
+      "route": "GET /v1/wallets",
+      "outcome": "accept",
+      "reason": null
+    },
+    {
+      "id": "RS-007-enrollment-200-no-request-binding",
+      "title": "Enrollment status, 200, NO request binding",
+      "route": "GET /v1/enrollments/{invitationId}/status",
+      "outcome": "accept",
+      "reason": null
+    },
+    {
+      "id": "RS-008-order-200-recovered",
+      "title": "Order recovered by a resume, 200, credentials, NO replay marker",
+      "route": "POST /v1/wallets/{walletId}/orders",
+      "outcome": "accept",
+      "reason": null
+    },
+    {
+      "id": "RS-008-order-200-recovered-M01",
+      "title": "Uncovered Idempotency-Replayed added",
+      "route": "POST /v1/wallets/{walletId}/orders",
+      "outcome": "reject",
+      "reason": "covered_components_mismatch"
+    },
+    {
+      "id": "RS-009-problem-409-replayed-refusal",
+      "title": "Order refused earlier, repeated, 409 Problem with Idempotency-Replayed true",
+      "route": "POST /v1/wallets/{walletId}/orders",
+      "outcome": "accept",
+      "reason": null
+    },
+    {
+      "id": "RS-009-problem-409-replayed-refusal-M01",
+      "title": "Idempotency-Replayed stripped from a recorded refusal",
+      "route": "POST /v1/wallets/{walletId}/orders",
+      "outcome": "reject",
+      "reason": "covered_components_mismatch"
+    },
+    {
+      "id": "RS-010-invoice-reveal-200",
+      "title": "Invoice reveal, 200, no-store",
+      "route": "POST /v1/wallets/{walletId}/invoices/{invoiceId}/cards/reveal",
+      "outcome": "accept",
+      "reason": null
+    },
+    {
+      "id": "RS-101-signed-by-next-key",
+      "title": "Signed by the NEXT published key",
+      "route": "GET /v1/profile",
+      "outcome": "accept",
+      "reason": null
+    },
+    {
+      "id": "RS-102-signed-by-retiring-key",
+      "title": "Signed by the RETIRED published key before retiredAt",
+      "route": "GET /v1/profile",
+      "outcome": "accept",
+      "reason": null
+    },
+    {
+      "id": "RS-103-key-document-carries-private-member",
+      "title": "Published key document leaks a private scalar on the ACTIVE key",
+      "route": "GET /.well-known/partner-signing-keys.json",
+      "outcome": "reject",
+      "reason": "key_rejected"
+    },
+    {
+      "id": "RS-104-private-member-on-an-unused-key",
+      "title": "Published key document leaks a private scalar on a key this response never uses",
+      "route": "GET /.well-known/partner-signing-keys.json",
+      "outcome": "reject",
+      "reason": "key_rejected"
+    },
+    {
+      "id": "RS-105-published-key-coordinate-not-32-bytes",
+      "title": "Published key's y coordinate is 31 bytes",
+      "route": "GET /.well-known/partner-signing-keys.json",
+      "outcome": "reject",
+      "reason": "key_rejected"
+    },
+    {
+      "id": "RS-106-retired-key-after-retired-at",
+      "title": "Retired key signed after retiredAt",
+      "route": "GET /v1/profile",
+      "outcome": "reject",
+      "reason": "key_retired"
+    },
+    {
+      "id": "RS-107-compromised-key",
+      "title": "Signing kid is in revoked[]",
+      "route": "GET /v1/profile",
+      "outcome": "reject",
+      "reason": "key_compromised"
+    },
+    {
+      "id": "RS-108-next-key-before-not-before",
+      "title": "Next key signed before notBefore",
+      "route": "GET /v1/profile",
+      "outcome": "reject",
+      "reason": "key_not_yet_valid"
+    },
+    {
+      "id": "RS-109-retired-key-missing-retired-at",
+      "title": "Retired key has no retiredAt",
+      "route": "GET /v1/profile",
+      "outcome": "reject",
+      "reason": "key_rejected"
+    },
+    {
+      "id": "RS-110-key-missing-not-before",
+      "title": "Signing key has no notBefore",
+      "route": "GET /v1/profile",
+      "outcome": "reject",
+      "reason": "key_rejected"
+    },
+    {
+      "id": "RS-111-retired-key-at-retired-at",
+      "title": "Retired key signed exactly at retiredAt",
+      "route": "GET /v1/profile",
+      "outcome": "accept",
+      "reason": null
+    }
+  ]
+}

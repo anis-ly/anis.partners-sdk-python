@@ -30,6 +30,7 @@ def components(
     retry_after: str | None,
     idempotency_replayed: str | None,
     cache_control: str | None,
+    request_signature: str | None = None,
 ) -> tuple[ResponseComponent, ...]:
     """Rebuild the contract's ordered profile so a server cannot choose which received fields are authenticated."""
     result = [
@@ -37,8 +38,9 @@ def components(
         ResponseComponent("content-digest", content_digest),
         ResponseComponent("x-request-id", request_id),
     ]
-    if request_signature_input:
-        result.append(ResponseComponent("signature-input", request_signature_input, True))
+    if request_signature_input or request_signature:
+        result.append(ResponseComponent("signature-input", request_signature_input or "", True))
+        result.append(ResponseComponent("signature", request_signature or "", True))
     for name, value in (
         ("location", location),
         ("retry-after", retry_after),
@@ -52,7 +54,8 @@ def components(
 
 def parameters(parts: tuple[ResponseComponent, ...], created: int, key_id: str) -> str:
     """Bind creation time and key identity; response freshness is enforced locally because no expiry is signed."""
-    return f'({" ".join(part.identifier for part in parts)});created={created};keyid="{key_id}";alg="{ALGORITHM}"'
+    covered = " ".join(part.identifier for part in parts)
+    return f'({covered});created={created};keyid="{key_id}";alg="{ALGORITHM}";tag="anis-response-v2"'
 
 
 def build(parts: tuple[ResponseComponent, ...], created: int, key_id: str) -> bytes:

@@ -16,47 +16,33 @@ from anis_partners.models._json import (
     text,
     timestamp,
 )
-from anis_partners.models.catalogue import LocalizedText
+from anis_partners.models.catalogue import CardClassification, LocalizedText
 from anis_partners.models.money import Money
 
 
 @dataclass(frozen=True, slots=True)
-class MaskedCardSubcategory:
-    """Identify the sold card's subcategory without exposing credential data."""
+class CardSummary:
+    """Share catalogue identity and display details across masked and revealed cards."""
 
     id: UUID = dataclass_field(default_factory=lambda: UUID(int=0))
     name: LocalizedText | None = None
+    face_value: str | None = None
+    logo: str | None = None
+    subcategory: CardClassification | None = None
+    category: CardClassification | None = None
 
     @classmethod
-    def from_json(cls, data: object) -> "MaskedCardSubcategory":
-        """Read the optional subcategory label so callers can display older projections too."""
-        value = object_data(data)
-        name = field(value, "name")
-        return cls(
-            identifier(field(value, "id")),
-            LocalizedText.from_json(name) if name is not None else None,
-        )
-
-    def to_json(self) -> dict[str, object]:
-        """Write the exact camelCase card projection members."""
-        return model_json(self)
-
-
-@dataclass(frozen=True, slots=True)
-class MaskedCardProduct:
-    """Identify a catalogue card without attaching its secret credential."""
-
-    id: UUID = dataclass_field(default_factory=lambda: UUID(int=0))
-    name: LocalizedText | None = None
-
-    @classmethod
-    def from_json(cls, data: object) -> "MaskedCardProduct":
+    def from_json(cls, data: object) -> "CardSummary":
         """Read the catalogue identity and optional label from a masked projection."""
         value = object_data(data)
         name = field(value, "name")
         return cls(
             identifier(field(value, "id")),
             LocalizedText.from_json(name) if name is not None else None,
+            text(field(value, "faceValue")),
+            text(field(value, "logo")),
+            CardClassification.from_json(value["subcategory"]) if value.get("subcategory") is not None else None,
+            CardClassification.from_json(value["category"]) if value.get("category") is not None else None,
         )
 
     def to_json(self) -> dict[str, object]:
@@ -68,39 +54,34 @@ class MaskedCardProduct:
 class MaskedCard:
     """Expose sale and reveal eligibility without placing credential plaintext in list responses."""
 
-    id: UUID = dataclass_field(default_factory=lambda: UUID(int=0))
-    order_operation_id: UUID | None = None
+    sold_card_id: UUID = dataclass_field(default_factory=lambda: UUID(int=0))
+    operation_id: UUID | None = None
     invoice_id: UUID | None = None
-    card: MaskedCardProduct | None = None
+    card: CardSummary | None = None
     serial_number_masked: str | None = None
     credential_available: bool = False
     purchased_at: datetime | None = None
     unit_price: Money | None = None
     expiry_date: date | None = None
     invoice_number: int | None = None
-    face_value: str | None = None
-    subcategory: MaskedCardSubcategory | None = None
 
     @classmethod
     def from_json(cls, data: object) -> "MaskedCard":
-        """Read optional newer card fields without turning their absence into invented values."""
+        """Read sale context and the shared card summary without inventing absent optional values."""
         value = object_data(data)
         card = field(value, "card")
         unit_price = field(value, "unitPrice")
-        subcategory = field(value, "subcategory")
         return cls(
-            identifier(field(value, "id")),
-            identifier(field(value, "orderOperationId"), optional=True),
+            identifier(field(value, "soldCardId")),
+            identifier(field(value, "operationId"), optional=True),
             identifier(field(value, "invoiceId"), optional=True),
-            MaskedCardProduct.from_json(card) if card is not None else None,
+            CardSummary.from_json(card) if card is not None else None,
             text(field(value, "serialNumberMasked")),
             boolean(field(value, "credentialAvailable")),
             timestamp(field(value, "purchasedAt")),
             Money.from_json(unit_price) if unit_price is not None else None,
             calendar_date(field(value, "expiryDate")),
             integer(field(value, "invoiceNumber")) if field(value, "invoiceNumber") is not None else None,
-            text(field(value, "faceValue")),
-            MaskedCardSubcategory.from_json(subcategory) if subcategory is not None else None,
         )
 
     def to_json(self) -> dict[str, object]:
@@ -118,7 +99,7 @@ class RevealedCredential:
     revealed_at: datetime | None = None
     expiry_date: date | None = None
     invoice_id: UUID | None = None
-    card: MaskedCardProduct | None = None
+    card: CardSummary | None = None
     purchased_at: datetime | None = None
 
     @classmethod
@@ -133,7 +114,7 @@ class RevealedCredential:
             timestamp(field(value, "revealedAt")),
             calendar_date(field(value, "expiryDate")),
             identifier(field(value, "invoiceId"), optional=True),
-            MaskedCardProduct.from_json(card) if card is not None else None,
+            CardSummary.from_json(card) if card is not None else None,
             timestamp(field(value, "purchasedAt")),
         )
 

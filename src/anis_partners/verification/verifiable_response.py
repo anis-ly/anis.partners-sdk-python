@@ -16,3 +16,5 @@ class VerifiableResponse:
     body: bytes = field(repr=False)
     #: Original client value needed to verify `;req` binding and prevent response substitution.
     request_signature_input: str | None = field(default=None, repr=False)
+    #: Raw request Signature field binds the answer to the exact signed request.
+    request_signature: str | None = field(default=None, repr=False)

@@ -26,6 +26,7 @@ class ErrorCode(StrEnum):
     INVITATION_INVALID = "invitation_invalid"
     INVOICE_REVEAL_LIMIT_EXCEEDED = "invoice_reveal_limit_exceeded"
     KEY_DUPLICATE = "key_duplicate"
+    KEY_NOT_REVOCABLE = "key_not_revocable"
     KEY_PROOF_INVALID = "key_proof_invalid"
     MALFORMED_SIGNED_REQUEST = "malformed_signed_request"
     OPERATION_PROCESSING = "operation_processing"
@@ -66,6 +67,7 @@ HTTP_STATUS: dict[ErrorCode, int] = {
     ErrorCode.INVITATION_INVALID: 401,
     ErrorCode.INVOICE_REVEAL_LIMIT_EXCEEDED: 409,
     ErrorCode.KEY_DUPLICATE: 409,
+    ErrorCode.KEY_NOT_REVOCABLE: 409,
     ErrorCode.KEY_PROOF_INVALID: 422,
     ErrorCode.MALFORMED_SIGNED_REQUEST: 400,
     ErrorCode.OPERATION_PROCESSING: 202,
@@ -186,6 +188,7 @@ RETRY_GUIDANCE: dict[ErrorCode, str] = {
             "staff to restart the enrolment.",
         )
     ),
+    ErrorCode.KEY_NOT_REVOCABLE: "A retired key cannot be revoked. Use the current application credential.",
     ErrorCode.KEY_PROOF_INVALID: "Correct the P-256/P1363 proof for the active challenge generation.",
     ErrorCode.MALFORMED_SIGNED_REQUEST: "".join(
         (
@@ -319,6 +322,7 @@ _BY_WIRE: dict[str, ErrorCode] = {
     "invitation_invalid": ErrorCode.INVITATION_INVALID,
     "invoice_reveal_limit_exceeded": ErrorCode.INVOICE_REVEAL_LIMIT_EXCEEDED,
     "key_duplicate": ErrorCode.KEY_DUPLICATE,
+    "key_not_revocable": ErrorCode.KEY_NOT_REVOCABLE,
     "key_proof_invalid": ErrorCode.KEY_PROOF_INVALID,
     "malformed_signed_request": ErrorCode.MALFORMED_SIGNED_REQUEST,
     "operation_processing": ErrorCode.OPERATION_PROCESSING,

@@ -10,12 +10,14 @@ from anis_partners._internal.clock import Clock
 from anis_partners._internal.key_document_cache import AsyncKeyDocumentCache
 from anis_partners._internal.uuid import canonical
 from anis_partners.operations.groups import (
+    AsyncAccessOperations,
     AsyncCatalogueOperations,
     AsyncDiagnosticsOperations,
     AsyncOrderOperations,
     AsyncOwnedCardOperations,
     AsyncProfileOperations,
     AsyncWalletOperations,
+    SyncAccessOperations,
     SyncCatalogueOperations,
     SyncDiagnosticsOperations,
     SyncOrderOperations,
@@ -61,6 +63,7 @@ class AnisPartnersClient:
         )
         self._core = RequestCore(options, signer, clock, nonce_factory, name)
         transport = SyncTransport(self._core, self._http, PartnerResponseVerifier(source, clock))
+        self.access = SyncAccessOperations(transport)
         self.profile = SyncProfileOperations(transport)
         self.wallets = SyncWalletOperations(transport)
         self.catalogue = SyncCatalogueOperations(transport)
@@ -111,6 +114,7 @@ class AsyncAnisPartnersClient:
         )
         self._core = RequestCore(options, signer, clock, nonce_factory, name)
         transport = AsyncTransport(self._core, self._http, AsyncPartnerResponseVerifier(source, clock))
+        self.access = AsyncAccessOperations(transport)
         self.profile = AsyncProfileOperations(transport)
         self.wallets = AsyncWalletOperations(transport)
         self.catalogue = AsyncCatalogueOperations(transport)

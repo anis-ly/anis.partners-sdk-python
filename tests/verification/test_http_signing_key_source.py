@@ -256,7 +256,14 @@ def test_concurrent_refresh_waiters_reuse_the_new_document() -> None:
         if calls > 1:
             entered.set()
             time.sleep(0.03)
-        return httpx.Response(200, json={"keys": [{"kid": str(calls), "x": "AA", "y": "AA"}]})
+        return httpx.Response(
+            200,
+            json={
+                "keys": [
+                    {"kid": str(calls), "x": "AA", "y": "AA", "status": "active", "notBefore": "2026-01-01T00:00:00Z"}
+                ]
+            },
+        )
 
     with httpx.Client(transport=httpx.MockTransport(handler)) as client:
         source = HttpSigningKeySource(client, "https://partners.anis.ly")

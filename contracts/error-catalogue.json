@@ -240,6 +240,13 @@
       "publicDocumentation": true
     },
     {
+      "publicCode": "key_not_revocable",
+      "httpStatus": 409,
+      "retryable": false,
+      "retryGuidance": "A retired key cannot be revoked. Use the current application credential.",
+      "publicDocumentation": true
+    },
+    {
       "publicCode": "key_duplicate",
       "httpStatus": 409,
       "retryable": false,

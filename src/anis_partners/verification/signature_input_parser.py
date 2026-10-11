@@ -12,6 +12,7 @@ class ParsedSignatureInput:
     created: int
     key_id: str
     algorithm: str | None
+    tag: str | None
 
 
 def parse(value: str) -> ParsedSignatureInput | None:
@@ -49,6 +50,8 @@ def parse(value: str) -> ParsedSignatureInput | None:
     saw_created = False
     key_id: str | None = None
     algorithm: str | None = None
+    tag: str | None = None
+    seen: set[str] = set()
     while index < len(value):
         if value[index] != ";":
             return None
@@ -57,6 +60,9 @@ def parse(value: str) -> ParsedSignatureInput | None:
         if name_end < 0:
             return None
         name = value[index:name_end]
+        if name in seen:
+            return None
+        seen.add(name)
         index = name_end + 1
         if index < len(value) and value[index] == '"':
             end = value.find('"', index + 1)
@@ -68,6 +74,8 @@ def parse(value: str) -> ParsedSignatureInput | None:
                 key_id = text
             elif name == "alg":
                 algorithm = text
+            elif name == "tag":
+                tag = text
         else:
             end = index
             while end < len(value) and value[end] != ";":
@@ -88,4 +96,4 @@ def parse(value: str) -> ParsedSignatureInput | None:
             index = end
     if created is None or key_id is None:
         return None
-    return ParsedSignatureInput(label, tuple(identifiers), created, key_id, algorithm)
+    return ParsedSignatureInput(label, tuple(identifiers), created, key_id, algorithm, tag)

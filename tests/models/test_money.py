@@ -11,7 +11,7 @@ from anis_partners.models.money import Money
 
 def test_money_parses_and_writes_three_decimal_places() -> None:
     """Preserve exact decimal text and UTC as-of seconds on the wire."""
-    value = Money.from_json('{"amount":"10.5","currency":"LYD","asOf":"2026-09-19T08:00:00+02:00"}')
+    value = Money.from_json('{"amount":"10.500","currency":"LYD","asOf":"2026-09-19T08:00:00+02:00"}')
     assert value.amount == Decimal("10.500")
     assert value.to_json() == {"amount": "10.500", "currency": "LYD", "asOf": "2026-09-19T06:00:00Z"}
 
@@ -47,9 +47,10 @@ def test_money_refuses_more_than_three_decimal_places_on_the_wire() -> None:
         Money.from_json('{"amount":"0.0004","currency":"LYD"}')
 
 
-def test_money_accepts_negative_amounts_for_order_guards_to_reject_as_prices() -> None:
-    """Keep Money general while the order boundary rejects non-positive unit prices before sending."""
-    assert Money(Decimal("-0.001"), "LYD").to_wire_amount() == "-0.001"
+def test_money_refuses_negative_amounts() -> None:
+    """The shared money contract contains only nonnegative amounts."""
+    with pytest.raises(ValueError, match="negative"):
+        Money(Decimal("-0.001"), "LYD")
 
 
 def test_money_pads_allowed_scale_without_rounding() -> None:
@@ -80,3 +81,17 @@ def test_money_converts_decimal_overflow_into_value_error() -> None:
     """Turn unrepresentable network amounts into a stable model refusal rather than InvalidOperation."""
     with pytest.raises(ValueError, match="supported decimal range"):
         Money.from_json('{"amount":"999999999999999999999999999999.000","currency":"LYD"}')
+
+
+@pytest.mark.parametrize("amount", ["-1.000", "1", "1.0", "1.00", "+1.000", "1e3", " 1.000"])
+def test_money_wire_requires_nonnegative_three_place_text(amount: str) -> None:
+    """The shared public money schema has exactly one amount spelling per supported scale."""
+    with pytest.raises(ValueError, match="Money amount"):
+        Money.from_json({"amount": amount, "currency": "LYD"})
+
+
+@pytest.mark.parametrize("currency", ["lyd", "Lyd", "LY", "LYDD", "123", ""])
+def test_money_requires_three_uppercase_currency_letters(currency: str) -> None:
+    """Refuse currency spellings that cannot satisfy the shared public money contract."""
+    with pytest.raises(ValueError, match="currency"):
+        Money(Decimal("1.000"), currency)

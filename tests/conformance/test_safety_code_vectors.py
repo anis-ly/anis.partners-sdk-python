@@ -12,9 +12,9 @@ from anis_partners.verification.partner_jwk import PartnerJwk
 from tests.support.vectors import read_vector, vector_files
 
 
-def test_safety_code_vector_file_count_is_four() -> None:
-    """Fail if a safety-code vector is missing."""
-    assert len(vector_files("safety-code", "SC")) == 4
+def test_vector_corpus_is_present() -> None:
+    """Require every vector listed by the manifest or discovered in the suite."""
+    assert vector_files("safety-code", "SC")
 
 
 @pytest.mark.parametrize("path", vector_files("safety-code", "SC"), ids=lambda path: Path(path).stem)

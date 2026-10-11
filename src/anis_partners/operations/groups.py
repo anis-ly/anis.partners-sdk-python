@@ -15,10 +15,12 @@ from anis_partners._internal.uuid import parse as parse_uuid
 from anis_partners.errors import AnisApiError, MalformedResponseError
 from anis_partners.errors.base import KeyDocumentUnavailableError
 from anis_partners.models import (
+    ApplicationSuspended,
     CatalogueCard,
     CatalogueCategory,
     CatalogueSubcategory,
     CreateOrderRequest,
+    KeyRevoked,
     MaskedCard,
     Order,
     OrderOutcomeUnknown,
@@ -102,6 +104,53 @@ def _next_cursor(cursor: str | None, seen: set[str]) -> str | None:
     return cursor
 
 
+def _reason(reason: str) -> dict[str, str]:
+    """Require a bounded stop reason before dispatching an irreversible self-service request."""
+    if not isinstance(reason, str) or not 1 <= len(reason.strip()) <= 500:
+        raise ValueError("reason must contain 1 to 500 characters after trimming.")
+    return {"reason": reason.strip()}
+
+
+class SyncAccessOperations:
+    """Stop access for this admitted application through signed, nonce-protected requests."""
+
+    def __init__(self, transport: SyncTransport) -> None:
+        self._transport = transport
+
+    def suspend_application(self, reason: str) -> ApplicationSuspended:
+        """Submit a required reason and return the verified current stop state."""
+        route = "/v1/application/suspend"
+        spec = _spec(self._transport.core, "POST", route, route, _reason(reason))
+        return (self._transport.send(spec, ApplicationSuspended.from_json))[0]
+
+    def revoke_key(self, key_id: UUID | str, reason: str) -> KeyRevoked:
+        """Submit a required reason and return the verified current stop state."""
+        key = _id(key_id, "key_id")
+        route = "/v1/keys/{keyId}/revoke"
+        spec = _spec(self._transport.core, "POST", route, f"/v1/keys/{key}/revoke", _reason(reason))
+        return (self._transport.send(spec, KeyRevoked.from_json))[0]
+
+
+class AsyncAccessOperations:
+    """Stop access for this admitted application through signed, nonce-protected requests."""
+
+    def __init__(self, transport: AsyncTransport) -> None:
+        self._transport = transport
+
+    async def suspend_application(self, reason: str) -> ApplicationSuspended:
+        """Submit a required reason and return the verified current stop state."""
+        route = "/v1/application/suspend"
+        spec = _spec(self._transport.core, "POST", route, route, _reason(reason))
+        return (await self._transport.send(spec, ApplicationSuspended.from_json))[0]
+
+    async def revoke_key(self, key_id: UUID | str, reason: str) -> KeyRevoked:
+        """Submit a required reason and return the verified current stop state."""
+        key = _id(key_id, "key_id")
+        route = "/v1/keys/{keyId}/revoke"
+        spec = _spec(self._transport.core, "POST", route, f"/v1/keys/{key}/revoke", _reason(reason))
+        return (await self._transport.send(spec, KeyRevoked.from_json))[0]
+
+
 class SyncProfileOperations:
     """Read the live application profile so current policy scopes are not mistaken for cached grants."""
 
@@ -149,6 +198,13 @@ class SyncCatalogueOperations:
 
     def __init__(self, transport: SyncTransport) -> None:
         self._transport = transport
+
+    def get_card(self, wallet_id: UUID | str, card_id: UUID | str) -> CatalogueCard:
+        """Read one catalogue card priced for the selected wallet."""
+        wallet, card = _id(wallet_id, "wallet_id"), _id(card_id, "card_id")
+        route = "/v1/wallets/{walletId}/catalog/cards/{cardId}"
+        spec = _spec(self._transport.core, "GET", route, f"/v1/wallets/{wallet}/catalog/cards/{card}")
+        return (self._transport.send(spec, CatalogueCard.from_json))[0]
 
     def list_categories_page(self, wallet_id: UUID | str, cursor: str | None = None) -> Page[CatalogueCategory]:
         """Read one category page for the selected wallet."""
@@ -229,8 +285,8 @@ class SyncOwnedCardOperations:
     def list_page(self, wallet_id: UUID | str, cursor: str | None = None) -> Page[MaskedCard]:
         """Read one masked-card page without exposing credentials in list results."""
         wallet = _id(wallet_id, "wallet_id")
-        route = "/v1/wallets/{walletId}/cards"
-        spec = _spec(self._transport.core, "GET", route, _cursor(f"/v1/wallets/{wallet}/cards", cursor))
+        route = "/v1/wallets/{walletId}/owned-cards"
+        spec = _spec(self._transport.core, "GET", route, _cursor(f"/v1/wallets/{wallet}/owned-cards", cursor))
         return self._transport.send(spec, _page_reader(MaskedCard.from_json))[0]
 
     def list(self, wallet_id: UUID | str) -> Iterator[MaskedCard]:
@@ -247,25 +303,25 @@ class SyncOwnedCardOperations:
     def get(self, wallet_id: UUID | str, sold_card_id: UUID | str) -> MaskedCard:
         """Read one masked card before deciding whether its credential should be revealed."""
         wallet, sold = _id(wallet_id, "wallet_id"), _id(sold_card_id, "sold_card_id")
-        route = "/v1/wallets/{walletId}/cards/{soldCardId}"
+        route = "/v1/wallets/{walletId}/owned-cards/{soldCardId}"
         return self._transport.send(
-            _spec(self._transport.core, "GET", route, f"/v1/wallets/{wallet}/cards/{sold}"), MaskedCard.from_json
+            _spec(self._transport.core, "GET", route, f"/v1/wallets/{wallet}/owned-cards/{sold}"), MaskedCard.from_json
         )[0]
 
     def reveal(self, wallet_id: UUID | str, sold_card_id: UUID | str) -> RevealedCredential:
         """Reveal one credential only on an explicit call because plaintext cannot be recovered from masked data."""
         wallet, sold = _id(wallet_id, "wallet_id"), _id(sold_card_id, "sold_card_id")
-        route = "/v1/wallets/{walletId}/cards/{soldCardId}/reveal"
+        route = "/v1/wallets/{walletId}/owned-cards/{soldCardId}/reveal"
         return self._transport.send(
-            _spec(self._transport.core, "POST", route, f"/v1/wallets/{wallet}/cards/{sold}/reveal"),
+            _spec(self._transport.core, "POST", route, f"/v1/wallets/{wallet}/owned-cards/{sold}/reveal"),
             RevealedCredential.from_json,
         )[0]
 
     def reveal_invoice(self, wallet_id: UUID | str, invoice_id: UUID | str) -> RevealedCredentialCollection:
         """Reveal an invoice atomically so callers never mistake a partial set for the complete purchase."""
         wallet, invoice = _id(wallet_id, "wallet_id"), _id(invoice_id, "invoice_id")
-        route = "/v1/wallets/{walletId}/invoices/{invoiceId}/cards/reveal"
-        path = f"/v1/wallets/{wallet}/invoices/{invoice}/cards/reveal"
+        route = "/v1/wallets/{walletId}/invoices/{invoiceId}/owned-cards/reveal"
+        path = f"/v1/wallets/{wallet}/invoices/{invoice}/owned-cards/reveal"
         return self._transport.send(
             _spec(self._transport.core, "POST", route, path), RevealedCredentialCollection.from_json
         )[0]
@@ -398,6 +454,13 @@ class AsyncCatalogueOperations:
     def __init__(self, transport: AsyncTransport) -> None:
         self._transport = transport
 
+    async def get_card(self, wallet_id: UUID | str, card_id: UUID | str) -> CatalogueCard:
+        """Read one catalogue card priced for the selected wallet."""
+        wallet, card = _id(wallet_id, "wallet_id"), _id(card_id, "card_id")
+        route = "/v1/wallets/{walletId}/catalog/cards/{cardId}"
+        spec = _spec(self._transport.core, "GET", route, f"/v1/wallets/{wallet}/catalog/cards/{card}")
+        return (await self._transport.send(spec, CatalogueCard.from_json))[0]
+
     async def list_categories_page(self, wallet_id: UUID | str, cursor: str | None = None) -> Page[CatalogueCategory]:
         """Read one category page for a wallet."""
         wallet = _id(wallet_id, "wallet_id")
@@ -494,8 +557,8 @@ class AsyncOwnedCardOperations:
     async def list_page(self, wallet_id: UUID | str, cursor: str | None = None) -> Page[MaskedCard]:
         """Read one masked card page."""
         wallet = _id(wallet_id, "wallet_id")
-        route = "/v1/wallets/{walletId}/cards"
-        path = _cursor(f"/v1/wallets/{wallet}/cards", cursor)
+        route = "/v1/wallets/{walletId}/owned-cards"
+        path = _cursor(f"/v1/wallets/{wallet}/owned-cards", cursor)
         return (
             await self._transport.send(
                 _spec(self._transport.core, "GET", route, path), _page_reader(MaskedCard.from_json)
@@ -517,20 +580,21 @@ class AsyncOwnedCardOperations:
     async def get(self, wallet_id: UUID | str, sold_card_id: UUID | str) -> MaskedCard:
         """Read one masked card."""
         wallet, sold = _id(wallet_id, "wallet_id"), _id(sold_card_id, "sold_card_id")
-        route = "/v1/wallets/{walletId}/cards/{soldCardId}"
+        route = "/v1/wallets/{walletId}/owned-cards/{soldCardId}"
         return (
             await self._transport.send(
-                _spec(self._transport.core, "GET", route, f"/v1/wallets/{wallet}/cards/{sold}"), MaskedCard.from_json
+                _spec(self._transport.core, "GET", route, f"/v1/wallets/{wallet}/owned-cards/{sold}"),
+                MaskedCard.from_json,
             )
         )[0]
 
     async def reveal(self, wallet_id: UUID | str, sold_card_id: UUID | str) -> RevealedCredential:
         """Reveal one verified credential only after an explicit request."""
         wallet, sold = _id(wallet_id, "wallet_id"), _id(sold_card_id, "sold_card_id")
-        route = "/v1/wallets/{walletId}/cards/{soldCardId}/reveal"
+        route = "/v1/wallets/{walletId}/owned-cards/{soldCardId}/reveal"
         return (
             await self._transport.send(
-                _spec(self._transport.core, "POST", route, f"/v1/wallets/{wallet}/cards/{sold}/reveal"),
+                _spec(self._transport.core, "POST", route, f"/v1/wallets/{wallet}/owned-cards/{sold}/reveal"),
                 RevealedCredential.from_json,
             )
         )[0]
@@ -538,10 +602,12 @@ class AsyncOwnedCardOperations:
     async def reveal_invoice(self, wallet_id: UUID | str, invoice_id: UUID | str) -> RevealedCredentialCollection:
         """Reveal all invoice credentials as one verified all-or-none result."""
         wallet, invoice = _id(wallet_id, "wallet_id"), _id(invoice_id, "invoice_id")
-        route = "/v1/wallets/{walletId}/invoices/{invoiceId}/cards/reveal"
+        route = "/v1/wallets/{walletId}/invoices/{invoiceId}/owned-cards/reveal"
         return (
             await self._transport.send(
-                _spec(self._transport.core, "POST", route, f"/v1/wallets/{wallet}/invoices/{invoice}/cards/reveal"),
+                _spec(
+                    self._transport.core, "POST", route, f"/v1/wallets/{wallet}/invoices/{invoice}/owned-cards/reveal"
+                ),
                 RevealedCredentialCollection.from_json,
             )
         )[0]

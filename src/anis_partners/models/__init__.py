@@ -1,13 +1,14 @@
 """Immutable public API models that retain the wire names and meaning of Anis responses."""
 
+from anis_partners.models.access import ApplicationSuspended, KeyRevoked
 from anis_partners.models.cards import (
+    CardSummary,
     MaskedCard,
-    MaskedCardProduct,
-    MaskedCardSubcategory,
     RevealedCredential,
     RevealedCredentialCollection,
 )
 from anis_partners.models.catalogue import (
+    CardClassification,
     CatalogueCard,
     CatalogueCategory,
     CatalogueCategoryType,
@@ -46,6 +47,9 @@ from anis_partners.models.wallets import (
 
 __all__ = [
     "ApplicationIdentity",
+    "ApplicationSuspended",
+    "CardClassification",
+    "CardSummary",
     "CatalogueCard",
     "CatalogueCategory",
     "CatalogueCategoryType",
@@ -56,10 +60,9 @@ __all__ = [
     "EnrollmentProofRequest",
     "EnrollmentState",
     "EnrollmentStatus",
+    "KeyRevoked",
     "LocalizedText",
     "MaskedCard",
-    "MaskedCardProduct",
-    "MaskedCardSubcategory",
     "Money",
     "Order",
     "OrderCompleted",

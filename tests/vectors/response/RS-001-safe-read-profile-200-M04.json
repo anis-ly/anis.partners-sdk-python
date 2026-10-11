@@ -1,13 +1,13 @@
 {
-  "notice": "Test data. The keys in these vectors are test keys — never Anis’s or any partner’s real keys — and partners.anis.ly is an example address.",
   "id": "RS-001-safe-read-profile-200-M04",
   "title": "X-Request-Id rewritten",
   "description": "The request id is covered, so correlation cannot be forged without breaking the signature.",
   "route": "GET /v1/profile",
-  "profile": "partner-response-v1",
+  "profile": "anis-response-v2",
   "verifyAt": 1789804805,
   "request": {
-    "signatureInput": "sig1=(\"@method\" \"@authority\" \"@path\" \"@query\" \"x-anis-date\");created=1789804800;expires=1789804860;keyid=\"3f2a9c14-8d6e-4b21-9f07-5c8ab2d61e43\";alg=\"ecdsa-p256-sha256\""
+    "signatureInput": "sig1=(\u0022@method\u0022 \u0022@authority\u0022 \u0022@path\u0022 \u0022@query\u0022 \u0022x-anis-date\u0022);created=1789804800;expires=1789804860;keyid=\u00223f2a9c14-8d6e-4b21-9f07-5c8ab2d61e43\u0022;alg=\u0022ecdsa-p256-sha256\u0022",
+    "signature": "sig1=:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8gISIjJCUmJygpKissLS4vMDEyMzQ1Njc4OTo7PD0\u002BPw==:"
   },
   "response": {
     "status": 200,
@@ -15,11 +15,11 @@
       "Content-Type": "application/json",
       "X-Request-Id": "01JZZZZZZZZZZZZZZZZZZZZZZZ",
       "Content-Digest": "sha-256=:epGQsVay09pY/GXv6MpAjMbsZ7VvobF1nAdylVo/mMk=:",
-      "Signature-Input": "sig1=(\"@status\" \"content-digest\" \"x-request-id\" \"signature-input\";req);created=1789804800;keyid=\"partner-response-signing/v1-active\";alg=\"ecdsa-p256-sha256\"",
-      "Signature": "sig1=:GDNIbq5zKXcNxSr/1ee3/qFJvdMa0jaeThGqrMjptdmgX8I5fKFsU2Ey3+1+kLGmJklw3C7mwIRgC4jTkp1Ycg==:"
+      "Signature-Input": "sig1=(\u0022@status\u0022 \u0022content-digest\u0022 \u0022x-request-id\u0022 \u0022signature-input\u0022;req \u0022signature\u0022;req);created=1789804800;keyid=\u0022partner-response-signing/v1-active\u0022;alg=\u0022ecdsa-p256-sha256\u0022;tag=\u0022anis-response-v2\u0022",
+      "Signature": "sig1=:5IhZOzlDiqEZLKFdhajS9wSPPyjfeMwbePazJmpoQPDUH1S2ax0N3PxfJlBkV6RqQQZeSHjXDyb7CytSi/yTwA==:"
     },
     "bodyBase64": "eyJwYXJ0bmVyIjp7ImlkIjoiN2M5ZTY2NzktNzQyNS00MGRlLTk0NGItZTA3ZmMxZjkwYWU3IiwibmFtZSI6IlBhcnRuZXIgTHRkIn0sImFwcGxpY2F0aW9uIjp7ImlkIjoiMTZmZDI3MDYtOGJhZi00MzNiLTgyZWItOGM3ZmFkYTg0N2RhIiwibmFtZSI6IlByb2R1Y3Rpb24gaW50ZWdyYXRpb24iLCJzY29wZXMiOlsicHJvZmlsZTpyZWFkIiwid2FsbGV0czpyZWFkIl19LCJkb2N1bWVudGF0aW9uVmVyc2lvbiI6IjIwMjYtMDcifQ==",
-    "bodyUtf8": "{\"partner\":{\"id\":\"7c9e6679-7425-40de-944b-e07fc1f90ae7\",\"name\":\"Partner Ltd\"},\"application\":{\"id\":\"16fd2706-8baf-433b-82eb-8c7fada847da\",\"name\":\"Production integration\",\"scopes\":[\"profile:read\",\"wallets:read\"]},\"documentationVersion\":\"2026-07\"}"
+    "bodyUtf8": "{\u0022partner\u0022:{\u0022id\u0022:\u00227c9e6679-7425-40de-944b-e07fc1f90ae7\u0022,\u0022name\u0022:\u0022Partner Ltd\u0022},\u0022application\u0022:{\u0022id\u0022:\u002216fd2706-8baf-433b-82eb-8c7fada847da\u0022,\u0022name\u0022:\u0022Production integration\u0022,\u0022scopes\u0022:[\u0022profile:read\u0022,\u0022wallets:read\u0022]},\u0022documentationVersion\u0022:\u00222026-07\u0022}"
   },
   "signingKeys": {
     "keys": [
@@ -30,7 +30,9 @@
         "y": "V7rgefFMX7Vfs5UQf8NmOil4j6HmkLgyjgLQnPWVeFI",
         "kid": "partner-response-signing/v1-active",
         "use": "sig",
-        "alg": "ES256"
+        "alg": "ES256",
+        "status": "active",
+        "notBefore": "2026-09-19T07:58:20+00:00"
       },
       {
         "kty": "EC",
@@ -39,7 +41,9 @@
         "y": "wCl8upDZi1PmxfC8xKhsmVidCdIpaa_DAiPu1gFYPmc",
         "kid": "partner-response-signing/v2-next",
         "use": "sig",
-        "alg": "ES256"
+        "alg": "ES256",
+        "status": "next",
+        "notBefore": "2026-09-19T07:58:20+00:00"
       },
       {
         "kty": "EC",
@@ -48,14 +52,18 @@
         "y": "cYho-fi98X3voIEv7lkMH3KjJMyFF3hbzc4_3IQd9GM",
         "kid": "partner-response-signing/v0-retiring",
         "use": "sig",
-        "alg": "ES256"
+        "alg": "ES256",
+        "status": "retired",
+        "notBefore": "2026-09-19T07:58:20+00:00",
+        "retiredAt": "2026-09-19T08:00:10+00:00"
       }
-    ]
+    ],
+    "revoked": []
   },
   "expected": {
     "outcome": "reject",
     "reason": "signature_invalid",
     "rationale": "The request id is covered, so correlation cannot be forged without breaking the signature."
   },
-  "signatureBaseForDebugging": "\"@status\": 200\n\"content-digest\": sha-256=:epGQsVay09pY/GXv6MpAjMbsZ7VvobF1nAdylVo/mMk=:\n\"x-request-id\": 01J9R2K8T4V6XQ0M3B7C5D9E1F\n\"signature-input\";req: sig1=(\"@method\" \"@authority\" \"@path\" \"@query\" \"x-anis-date\");created=1789804800;expires=1789804860;keyid=\"3f2a9c14-8d6e-4b21-9f07-5c8ab2d61e43\";alg=\"ecdsa-p256-sha256\"\n\"@signature-params\": (\"@status\" \"content-digest\" \"x-request-id\" \"signature-input\";req);created=1789804800;keyid=\"partner-response-signing/v1-active\";alg=\"ecdsa-p256-sha256\""
+  "signatureBaseForDebugging": "\u0022@status\u0022: 200\n\u0022content-digest\u0022: sha-256=:epGQsVay09pY/GXv6MpAjMbsZ7VvobF1nAdylVo/mMk=:\n\u0022x-request-id\u0022: 01J9R2K8T4V6XQ0M3B7C5D9E1F\n\u0022signature-input\u0022;req: sig1=(\u0022@method\u0022 \u0022@authority\u0022 \u0022@path\u0022 \u0022@query\u0022 \u0022x-anis-date\u0022);created=1789804800;expires=1789804860;keyid=\u00223f2a9c14-8d6e-4b21-9f07-5c8ab2d61e43\u0022;alg=\u0022ecdsa-p256-sha256\u0022\n\u0022signature\u0022;req: sig1=:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8gISIjJCUmJygpKissLS4vMDEyMzQ1Njc4OTo7PD0\u002BPw==:\n\u0022@signature-params\u0022: (\u0022@status\u0022 \u0022content-digest\u0022 \u0022x-request-id\u0022 \u0022signature-input\u0022;req \u0022signature\u0022;req);created=1789804800;keyid=\u0022partner-response-signing/v1-active\u0022;alg=\u0022ecdsa-p256-sha256\u0022;tag=\u0022anis-response-v2\u0022"
 }

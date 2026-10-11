@@ -18,6 +18,14 @@ class ResponseVerificationFailure(StrEnum):
     COVERED_COMPONENTS_MISMATCH = "covered_components_mismatch"
     #: The published document did not contain the response's key version.
     UNKNOWN_KEY = "unknown_key"
+    #: The response does not use the required v2 profile tag.
+    PROFILE_UNEXPECTED = "profile_unexpected"
+    #: The published version is compromised.
+    KEY_COMPROMISED = "key_compromised"
+    #: The signature was created after the version stopped signing.
+    KEY_RETIRED = "key_retired"
+    #: The next version signed before its activation time.
+    KEY_NOT_YET_VALID = "key_not_yet_valid"
     #: The key document exposed private material or an invalid P-256 point.
     KEY_REJECTED = "key_rejected"
     #: The response named an algorithm this SDK does not support.

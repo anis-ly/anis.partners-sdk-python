@@ -20,7 +20,7 @@ from anis_partners._internal.key_document_cache import (
 )
 from anis_partners._internal.telemetry import safe_get_logger, safe_log, safe_metric
 from anis_partners.errors.base import KeyDocumentUnavailableError
-from anis_partners.observability.telemetry import signing_key_fetches
+from anis_partners.observability.telemetry import USER_AGENT, signing_key_fetches
 from anis_partners.options import ClientOptions
 from anis_partners.verification.partner_jwk import SigningKeySet
 
@@ -105,7 +105,7 @@ class AsyncHttpSigningKeySource:
         try:
             response = await self._client.get(
                 self._authority + self.PATH,
-                headers={"Accept-Encoding": "identity"},
+                headers={"Accept-Encoding": "identity", "User-Agent": USER_AGENT},
                 follow_redirects=False,
                 timeout=self._timeout,
             )

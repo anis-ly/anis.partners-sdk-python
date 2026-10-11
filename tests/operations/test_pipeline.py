@@ -138,7 +138,7 @@ def test_invoice_reveal_sends_zero_bytes_and_returns_the_verified_collection() -
     client, http = _client(wire)
     try:
         result = client.owned_cards.reveal_invoice(WALLET, CARD_SOLD)
-        request = next(item for item in wire.requests if item.url.path.endswith("/cards/reveal"))
+        request = next(item for item in wire.requests if item.url.path.endswith("/owned-cards/reveal"))
         assert len(result.items) == 1
         assert result.items[0].voucher == "V"
         assert request.content == b""
@@ -345,7 +345,7 @@ def test_nonpositive_price_is_rejected_before_any_request() -> None:
     client, http = _client(wire)
     try:
         with pytest.raises(ValueError, match="expected_unit_price"):
-            client.orders.create(wallet_id=WALLET, operation_id=OPERATION, order=_order("-0.001", "-0.002"))
+            client.orders.create(wallet_id=WALLET, operation_id=OPERATION, order=_order("0.000", "0.000"))
         assert wire.requests == []
     finally:
         client.close()
@@ -1158,15 +1158,15 @@ def test_sync_wallet_iteration_refuses_a_nonadjacent_cursor_cycle() -> None:
 def test_owned_cards_iterate_all_cursor_pages() -> None:
     """Follow every owned-card cursor so a first page cannot masquerade as the full wallet state."""
     answers = [
-        WireAnswer(body=b'{"items":[{"id":"4a6c2e81-7b39-4d15-a2f8-3e7b9c1d5046"}],"nextCursor":"next"}'),
-        WireAnswer(body=b'{"items":[{"id":"4a6c2e81-7b39-4d15-a2f8-3e7b9c1d5046"}],"nextCursor":null}'),
+        WireAnswer(body=b'{"items":[{"soldCardId":"4a6c2e81-7b39-4d15-a2f8-3e7b9c1d5046"}],"nextCursor":"next"}'),
+        WireAnswer(body=b'{"items":[{"soldCardId":"4a6c2e81-7b39-4d15-a2f8-3e7b9c1d5046"}],"nextCursor":null}'),
     ]
     wire = SignedMockWire(lambda request: answers.pop(0))
     client, http = _client(wire)
     try:
         cards = list(client.owned_cards.list(WALLET))
         assert len(cards) == 2
-        requests = [item for item in wire.requests if item.url.path.endswith("/cards")]
+        requests = [item for item in wire.requests if item.url.path.endswith("/owned-cards")]
         assert len(requests) == 2
         assert requests[1].url.query == b"cursor=next"
     finally:
@@ -1271,7 +1271,7 @@ async def test_async_catalogue_and_owned_card_iterators_yield_nonempty_later_pag
             else "catalogue_cards"
             if "/catalog/subcategories/" in path and path.endswith("/cards")
             else "owned_cards"
-            if path.endswith("/cards")
+            if path.endswith("/owned-cards")
             else "categories"
         )
         return WireAnswer(body=pages[key].pop(0))
@@ -1294,7 +1294,7 @@ async def test_async_catalogue_and_owned_card_iterators_yield_nonempty_later_pag
         [
             request
             for request in wire.requests
-            if request.url.path.endswith("/cards") and "/catalog/" not in request.url.path
+            if request.url.path.endswith("/owned-cards") and "/catalog/" not in request.url.path
         ],
     ):
         assert len(sent) == 2

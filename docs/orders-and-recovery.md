@@ -34,7 +34,7 @@ request = CreateOrderRequest(
 )
 ```
 
-Prices accept up to three decimal places and never round longer values. The SDK checks positive unit price, quantity, currency, and `unit × quantity` before sending. `external_reference`, when supplied, is limited by the API to 100 characters and its accepted character set. `use_allowed_debt` defaults to false; set it to true only when the buyer has explicitly agreed to use allowed debt.
+Money on the wire requires nonnegative amounts with exactly three decimal places and uppercase three-letter currency codes. Python Decimal constructors accept up to three decimal places and pad shorter scales without rounding. The SDK checks positive unit price, quantity, currency, and `unit × quantity` before sending. `external_reference`, when supplied, is limited by the API to 100 characters and its accepted character set. `use_allowed_debt` defaults to false; set it to true only when the buyer has explicitly agreed to use allowed debt.
 
 ## The five results
 

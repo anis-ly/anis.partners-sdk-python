@@ -50,6 +50,7 @@ The SDK's `ErrorCode` values come from `contracts/error-catalogue.json`; the tab
 | `invalid_credentials` | 401 | `InvalidCredentialsError` | no | yes |
 | `invitation_invalid` | 401 | `EnrollmentRefusedError` | no | no |
 | `invoice_reveal_limit_exceeded` | 409 | `AnisApiError` | no | no |
+| `key_not_revocable` | 409 | `AnisApiError` | no | no |
 | `key_duplicate` | 409 | `EnrollmentRefusedError` | no | no |
 | `key_proof_invalid` | 422 | `EnrollmentRefusedError` | no | no |
 | `malformed_signed_request` | 400 | `AnisApiError` | no | yes |
@@ -86,3 +87,5 @@ Invalid caller arguments raise `ValueError` or `TypeError` directly. For example
 A read may be retried according to its error. An order with an unknown result must be resumed under the same operation id and exact body. Unknown future codes are not considered retryable. See [Orders and recovery](orders-and-recovery.md).
 
 `validation_failed` intentionally does not identify the failing field. Check the published request contract, exact three-place decimal limit, UUIDs, and body rules before trying again.
+
+The closed verification vocabulary is `signature_missing`, `signature_malformed`, `signature_invalid`, `content_digest_mismatch`, `covered_components_mismatch`, `unknown_key`, `key_rejected`, `algorithm_not_supported`, `label_unexpected`, `created_out_of_window`, `profile_unexpected`, `key_compromised`, `key_retired`, and `key_not_yet_valid`. These are local trust failures, not API refusal codes.
