@@ -66,7 +66,7 @@ options = ClientOptions(
     authority="https://<authority Anis gave you>",
     signature_lifetime_seconds=60,  # 1–60 seconds
     accept_language=AcceptLanguage.ARABIC,  # presentation only
-    signing_key_cache_seconds=600,
+    signing_key_cache_seconds=300,
     timeout_seconds=30,
 )
 ```
@@ -81,7 +81,7 @@ options = ClientOptions.from_mapping(
         "authority": "https://<authority Anis gave you>",
         "signature_lifetime_seconds": 60,
         "accept_language": "Arabic",
-        "signing_key_cache_seconds": 600,
+        "signing_key_cache_seconds": 300,
         "timeout_seconds": 30,
     }
 )
@@ -128,7 +128,7 @@ Both clients use the same request, order, and response-verification rules. An in
 
 ## 4. When a signature will not verify
 
-Every answer on a signed route — orders, reveals, enrollment, and the signature self-test — is verified before a model is returned. The information reads (profile, wallets, catalogue, owned-card list and read) are answered unsigned and are not verified. For a signed read such as `orders.get()` or a reveal, `UnverifiableResponseError.failure` identifies the failed rule and the answer body is discarded. For an order, the result is `OrderOutcomeUnknown`: the order may have completed, so resume with the same operation id and exact request. The SDK refreshes its signing-key document once when the response names an unknown key.
+Every answer on a signed route — orders, reveals, enrollment, and the signature self-test — is verified before a model is returned. The information reads (profile, wallets, catalogue, owned-card list and read) are answered unsigned and are not verified. For a signed read such as `orders.get()` or a reveal, `UnverifiableResponseError.failure` identifies the failed rule and the answer body is discarded. For an order, the result is `OrderOutcomeUnknown`: the order may have completed, so resume with the same operation id and exact request. The SDK refreshes its signing-key document after an unknown key at most once per 30 seconds per key source, including failed fetches.
 
 Use `anis.diagnostics.check_signature()` (or `await anis.diagnostics.check_signature()`) when a signature is refused. The diagnostic result reports the request facts Anis used to rebuild the signature base. Check the active key id, host clock, and whether an intermediary rewrites the request. A response verification error is separate from an API refusal: it means the SDK could not prove the answer came from Anis.
 

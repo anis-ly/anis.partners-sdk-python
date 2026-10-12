@@ -111,7 +111,10 @@ class RateLimitedError(AnisApiError):
 
 
 class LimitExceededError(AnisApiError):
-    """An owner allowance is a final refusal until its authoritative limit changes."""
+    """A spending allowance is used up; the order is closed.
+
+    For a spending cap, ``retry_after`` says when a new order can succeed.
+    """
 
 
 class InvalidCredentialsError(AnisApiError):
@@ -151,6 +154,7 @@ _ERROR_TYPES: dict[ErrorCode, type[AnisApiError]] = {
     ErrorCode.RATE_LIMITED: RateLimitedError,
     ErrorCode.OWNER_LIMIT_EXCEEDED: LimitExceededError,
     ErrorCode.DAILY_LIMIT_EXCEEDED: LimitExceededError,
+    ErrorCode.SPENDING_LIMIT_EXCEEDED: LimitExceededError,
     ErrorCode.INVALID_CREDENTIALS: InvalidCredentialsError,
     ErrorCode.SIGNATURE_EXPIRED: InvalidCredentialsError,
     ErrorCode.REPLAY_DETECTED: ReplayDetectedError,

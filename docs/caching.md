@@ -1,10 +1,12 @@
 # Signing key cache
 
-The public response-verification keys are fetched separately from signed API responses. Each client keeps them in process memory for the configured cache duration (600 seconds by default). In a multi-worker application, each worker otherwise fetches the same key document independently and can temporarily observe a rotation at a different time.
+The public response-verification keys are fetched separately from signed API responses. Each client keeps them in process memory for the configured cache duration (300 seconds by default, and at most 300 seconds, so a key Anis withdraws stops verifying answers within five minutes). In a multi-worker application, each worker otherwise fetches the same key document independently and can temporarily observe a rotation at a different time.
 
 The shared cache is part of the trust boundary: its signing-key namespace must be writable only by your application and trusted operators. Anyone who can replace a cached document can supply a different public key and make matching responses appear authentic. Do not share this cache namespace with tenants or untrusted workloads.
 
-Pass a shared object that implements the public `KeyDocumentCache` protocol to the client as `key_cache`. Its `get(key)` method returns the cached JSON string or `None`; `set(key, value, ttl_seconds)` stores that string for the bounded lifetime. The SDK uses a cache key derived from the lower-cased authority. The cache contains public signing keys only. After a response refers to an unknown key id, the SDK refreshes from the authority once rather than trusting a stale document indefinitely.
+Pass a shared object that implements the public `KeyDocumentCache` protocol to the client as `key_cache`. Its `get(key)` method returns the cached JSON string or `None`; `set(key, value, ttl_seconds)` stores that string for the bounded lifetime. The SDK uses a cache key derived from the lower-cased authority. The cache contains public signing keys only. After a response refers to an unknown key id, the SDK refreshes from the authority at most once every 30 seconds per key source, including failed fetches. Concurrent callers share that fetch; inside the cooldown an unknown key fails as `unknown_key` without another fetch. A revoked key never triggers a refresh. First-use and expiry fetches do not start or consume this cooldown.
+
+A shared entry expires 300 seconds after Anis's document was first fetched, whichever worker copies it; a shorter configured duration still applies from that original fetch time.
 
 For example, adapt the shared cache service already used by your host application:
 

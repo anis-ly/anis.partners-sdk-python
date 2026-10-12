@@ -14,6 +14,11 @@ def vector_files(kind: str, prefix: str) -> list[Path]:
     if not manifest_path.exists():
         return sorted(directory.glob(f"{prefix}-*.json"))
     manifest = read_vector(manifest_path)
+    if "vectors" not in manifest and "total" in manifest:
+        paths = sorted(directory.glob(f"{prefix}-*.json"))
+        if len(paths) != manifest["total"]:
+            raise ValueError("The vector manifest count does not match the available files.")
+        return paths
     entries = manifest["vectors"]
     paths = [
         directory / (entry if isinstance(entry, str) else (entry["file"] if "file" in entry else entry["id"] + ".json"))

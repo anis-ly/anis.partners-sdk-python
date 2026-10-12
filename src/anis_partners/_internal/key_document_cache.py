@@ -157,6 +157,6 @@ async def write_async_cache(
 
 
 def expiry_from_fetch(fetched_at: int, ttl_seconds: int) -> float:
-    """Convert shared wall-clock age into a local monotonic deadline."""
-    remaining = max(0, fetched_at + ttl_seconds - int(time.time()))
+    """Convert shared age into a monotonic deadline without letting clock skew extend the configured lifetime."""
+    remaining = min(ttl_seconds, max(0, fetched_at + ttl_seconds - int(time.time())))
     return time.monotonic() + remaining

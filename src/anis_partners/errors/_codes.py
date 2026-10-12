@@ -41,6 +41,7 @@ class ErrorCode(StrEnum):
     REVEAL_NOT_ALLOWED = "reveal_not_allowed"
     SIGNATURE_EXPIRED = "signature_expired"
     SOURCE_IP_NOT_ALLOWED = "source_ip_not_allowed"
+    SPENDING_LIMIT_EXCEEDED = "spending_limit_exceeded"
     VALIDATION_FAILED = "validation_failed"
     WALLET_DISABLED = "wallet_disabled"
     WALLET_EXPIRED = "wallet_expired"
@@ -82,6 +83,7 @@ HTTP_STATUS: dict[ErrorCode, int] = {
     ErrorCode.REVEAL_NOT_ALLOWED: 409,
     ErrorCode.SIGNATURE_EXPIRED: 401,
     ErrorCode.SOURCE_IP_NOT_ALLOWED: 403,
+    ErrorCode.SPENDING_LIMIT_EXCEEDED: 429,
     ErrorCode.VALIDATION_FAILED: 422,
     ErrorCode.WALLET_DISABLED: 409,
     ErrorCode.WALLET_EXPIRED: 409,
@@ -266,16 +268,28 @@ RETRY_GUIDANCE: dict[ErrorCode, str] = {
             "uld be allowed.",
         )
     ),
+    ErrorCode.SPENDING_LIMIT_EXCEEDED: "".join(
+        (
+            "The order was not placed: it would take the applic",
+            "ation's spending above its ceiling for the current",
+            " period. Do not repeat it; after the Retry-After d",
+            "elay (the end of the period) submit a new operatio",
+            "n and idempotency key, or ask Anis staff to change",
+            " the ceiling.",
+        )
+    ),
     ErrorCode.VALIDATION_FAILED: "".join(
         (
             "The response never names the field: check the requ",
             "est against the documented rules before sending it",
             " again. How the request is sent counts too: a body",
-            " over 64 KB, a chunked body (send Content-Length i",
-            "nstead), headers over 32 KB in total, a path and q",
-            "uery over 2,048 characters, a body on a call that ",
-            "takes none, or an order whose Idempotency-Key is m",
-            "issing or is not a UUID written with hyphens.",
+            " over 64 KB, an order body over 8,192 bytes, an or",
+            "der Content-Type with a charset other than UTF-8, ",
+            "a chunked body (send Content-Length instead), head",
+            "ers over 32 KB in total, a path and query over 2,0",
+            "48 characters, a body on a call that takes none, o",
+            "r an order whose Idempotency-Key is missing or is ",
+            "not a UUID written with hyphens.",
         )
     ),
     ErrorCode.WALLET_DISABLED: "Submit a new request only after the wallet has been re-enabled.",
@@ -337,6 +351,7 @@ _BY_WIRE: dict[str, ErrorCode] = {
     "reveal_not_allowed": ErrorCode.REVEAL_NOT_ALLOWED,
     "signature_expired": ErrorCode.SIGNATURE_EXPIRED,
     "source_ip_not_allowed": ErrorCode.SOURCE_IP_NOT_ALLOWED,
+    "spending_limit_exceeded": ErrorCode.SPENDING_LIMIT_EXCEEDED,
     "validation_failed": ErrorCode.VALIDATION_FAILED,
     "wallet_disabled": ErrorCode.WALLET_DISABLED,
     "wallet_expired": ErrorCode.WALLET_EXPIRED,

@@ -11,6 +11,8 @@ from urllib.parse import urlsplit
 import httpx
 
 _MAX_TIMESPAN_SECONDS = 922_337_203_685.4775807
+MAX_SIGNING_KEY_CACHE_SECONDS = 300
+"""Bound trust in a fetched key document so a withdrawn Anis key stops verifying answers within five minutes."""
 
 
 class AcceptLanguage(StrEnum):
@@ -28,7 +30,7 @@ class ClientOptions:
     authority: str
     signature_lifetime_seconds: int = field(default=60, kw_only=True)
     accept_language: AcceptLanguage = field(default=AcceptLanguage.UNSPECIFIED, kw_only=True)
-    signing_key_cache_seconds: int = field(default=600, kw_only=True)
+    signing_key_cache_seconds: int = field(default=MAX_SIGNING_KEY_CACHE_SECONDS, kw_only=True)
     timeout_seconds: float = field(default=30, kw_only=True)
 
     def __post_init__(self) -> None:
@@ -63,8 +65,11 @@ class ClientOptions:
             raise ValueError("ClientOptions.timeout_seconds must be positive.")
         if type(self.signing_key_cache_seconds) is not int:
             raise ValueError("ClientOptions.signing_key_cache_seconds must be a positive integer number of seconds.")
-        if self.signing_key_cache_seconds <= 0:
-            raise ValueError("ClientOptions.signing_key_cache_seconds must be positive.")
+        if not 0 < self.signing_key_cache_seconds <= MAX_SIGNING_KEY_CACHE_SECONDS:
+            raise ValueError(
+                "ClientOptions.signing_key_cache_seconds must be from 1 to 300 seconds, "
+                "so a withdrawn Anis key stops verifying answers within five minutes."
+            )
         if type(self.signature_lifetime_seconds) is not int:
             raise ValueError("ClientOptions.signature_lifetime_seconds must be an integer from 1 to 60 seconds.")
         if not 1 <= self.signature_lifetime_seconds <= 60:
@@ -103,7 +108,8 @@ class ClientOptions:
             read("SignatureLifetime", "signature_lifetime_seconds", 60), "signature_lifetime_seconds"
         )
         cache = _whole_seconds(
-            read("SigningKeyCacheDuration", "signing_key_cache_seconds", 600), "signing_key_cache_seconds"
+            read("SigningKeyCacheDuration", "signing_key_cache_seconds", MAX_SIGNING_KEY_CACHE_SECONDS),
+            "signing_key_cache_seconds",
         )
         timeout = _seconds(read("Timeout", "timeout_seconds", 30), "timeout_seconds")
         language_value = read("AcceptLanguage", "accept_language", "")

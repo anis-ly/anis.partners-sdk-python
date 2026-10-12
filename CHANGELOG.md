@@ -4,7 +4,11 @@
 
 ### Breaking changes
 
-- Require `anis-response-v2`, bind the raw request signature, and enforce compromised, retired and next signing-key state.
+- Recognise `spending_limit_exceeded` (HTTP 429): a spending-capped order is not placed and is reported as `LimitExceededError` with the `Retry-After` delay until the spending window ends.
+- Require `anis-response-v2`, bind the raw request signature, and enforce compromised and retired signing-key state. Every published response key (active, next or retired) refuses a signature created before its `notBefore` (`key_not_yet_valid`).
+- The signing-key document is cached for 300 seconds by default and at most 300 seconds; `ClientOptions` and both key sources refuse a longer cache.
+- An unknown response key id re-fetches the key document at most once per 30 seconds per key source (sync and async), failed fetches included.
+- Documentation: retired keys stay published for 90 days after retirement.
 - Use `/owned-cards` routes and shared `CardSummary` in masked cards, reveals and order credentials; masked ids are `sold_card_id` and `operation_id`. Wallet currency is `balance.currency`. Money wire values require nonnegative three-place amounts and uppercase currency codes.
 - Add `access.suspend_application(reason)`, `access.revoke_key(key_id, reason)`, and `catalogue.get_card(wallet_id, card_id)` in both clients. Catalogue cards include logo/category and subcategory lists include description.
 

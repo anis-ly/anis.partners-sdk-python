@@ -31,7 +31,7 @@ Protect the private half before submitting a public key. After proof, an Anis st
 
 ## Rotation
 
-Anis staff start a rotation, then you enroll a replacement key and complete the safety-code check. During the overlap, requests may be signed by either the old or replacement key; keep both private keys available until Anis confirms completion and every worker has moved to the replacement. A revoked key is refused as `invalid_credentials`. The SDK fetches the public key document and refreshes it once when a response uses an unknown key id. Its default in-process cache is ten minutes; a host can supply a shared `KeyDocumentCache` with a bounded TTL. Rotation is managed by key state at Anis, not by a local environment switch.
+Anis staff start a rotation, then you enroll a replacement key and complete the safety-code check. During the overlap, requests may be signed by either the old or replacement key; keep both private keys available until Anis confirms completion and every worker has moved to the replacement. A revoked key is refused as `invalid_credentials`. The SDK fetches the public key document and refreshes it after an unknown response key id at most once per 30 seconds per key source, including failed fetches. Its default and maximum in-process cache duration is five minutes; a host can supply a shared `KeyDocumentCache` whose age still counts from the original fetch. Rotation is managed by key state at Anis, not by a local environment switch.
 
 ## Card credentials
 
@@ -41,4 +41,6 @@ Revealed codes are returned only by explicit reveal calls or the first verified 
 
 The verifier requires `tag="anis-response-v2"` and rebuilds this exact order: `"@status"`, `"content-digest"`, `"x-request-id"`, then `"signature-input";req` and `"signature";req` only for a signed partner request, followed by present `location`, `retry-after`, `idempotency-replayed`, `cache-control`. The request signature is its raw `Signature` header value. Public and enrollment answers have no request binding.
 
-The HTTPS key document carries `keys[]` with `status`, `notBefore`, and `retiredAt` for retired keys, plus `revoked[]` with `kid` and `compromisedAt`. A revoked version fails as `key_compromised`, regardless of creation time. A retired version fails as `key_retired` when signature creation is after `retiredAt`. A next version fails as `key_not_yet_valid` when creation is before `notBefore`. Missing or different tags fail as `profile_unexpected`; a different component list fails as `covered_components_mismatch`.
+The HTTPS key document carries `keys[]` with `status`, `notBefore`, and `retiredAt` for retired keys, plus `revoked[]` with `kid` and `compromisedAt`. A revoked version fails as `key_compromised`, regardless of creation time. A retired version fails as `key_retired` when signature creation is after `retiredAt`. Any published version (`active`, `next` or `retired`) fails as `key_not_yet_valid` when creation is before its `notBefore`. Missing or different tags fail as `profile_unexpected`; a different component list fails as `covered_components_mismatch`.
+
+Anis keeps a retired key in the document for 90 days after it retires and a compromised key id in `revoked[]` for 90 days, so stored answers can still be checked during a dispute.

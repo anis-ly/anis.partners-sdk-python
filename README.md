@@ -81,6 +81,8 @@ The SDK covers all 22 published routes across `access`, `profile`, `wallets`, `c
 
 This package follows the published Partner SDK contract. Supported Python versions are 3.11–3.14.
 
+Signing-key documents are cached for five minutes by default and at most five minutes, including their original age in a shared cache. Unknown response key ids trigger at most one refresh per 30 seconds per key source, including failures. Anis publishes retired response keys for 90 days after retirement and compromised key ids in `revoked[]` for 90 days; see [Security and key custody](docs/security.md).
+
 ### Live verification
 
 Verified end to end against a live Anis environment (October 2026).

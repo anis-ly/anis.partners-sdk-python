@@ -11,6 +11,7 @@ import pytest
 
 import anis_partners._internal.key_document_cache as key_document_cache_module
 import anis_partners.verification.async_http_signing_key_source as async_key_source_module
+from anis_partners._internal.key_document_cache import encode_document
 from anis_partners.errors import KeyDocumentUnavailableError
 from anis_partners.verification.async_http_signing_key_source import AsyncHttpSigningKeySource
 from anis_partners.verification.http_signing_key_source import KeyDocumentCache
@@ -414,3 +415,151 @@ async def test_async_key_document_request_uses_identity_and_does_not_follow_redi
 
     assert len(observed) == 1
     assert observed[0].headers["Accept-Encoding"] == "identity"
+
+
+@pytest.mark.anyio
+async def test_async_cache_lifetime_longer_than_five_minutes_is_refused() -> None:
+    """Async key-source construction also bounds trust to five minutes."""
+    async with httpx.AsyncClient() as client:
+        with pytest.raises(ValueError, match="from 1 to 300"):
+            AsyncHttpSigningKeySource(client, "https://partners.anis.ly", cache_seconds=301)
+        AsyncHttpSigningKeySource(client, "https://partners.anis.ly", cache_seconds=300)
+
+
+@pytest.mark.anyio
+async def test_async_default_cache_keeps_the_document_for_five_minutes(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Async reads stop using the cached document at the five-minute boundary."""
+    monotonic = [100.0]
+    monkeypatch.setattr(time, "monotonic", lambda: monotonic[0])
+    calls = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(200, json={"keys": []})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        source = AsyncHttpSigningKeySource(client, "https://partners.anis.ly")
+        document = await source.get()
+        monotonic[0] += 299.99
+        assert await source.get() is document
+        assert calls == 1
+        monotonic[0] += 0.02
+        assert await source.get() is not document
+    assert calls == 2
+
+
+@pytest.mark.anyio
+async def test_async_shared_entry_expires_five_minutes_after_its_original_fetch(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An async shared-cache hit receives only the original document's remaining trust time."""
+    wall = [1_000]
+    monotonic = [100.0]
+    monkeypatch.setattr(time, "time", lambda: wall[0])
+    monkeypatch.setattr(time, "monotonic", lambda: monotonic[0])
+    cache = AsyncMemoryKeyCache()
+    calls = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(200, json={"keys": []})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        source = AsyncHttpSigningKeySource(client, "https://partners.anis.ly", cache=cache)
+        cache.values[source._cache_key] = encode_document('{"keys": []}', 701)
+        await source.get()
+        assert calls == 0
+        wall[0] += 1
+        monotonic[0] += 1
+        await source.get()
+    assert calls == 1
+
+
+@pytest.mark.anyio
+async def test_async_future_dated_shared_entry_does_not_extend_the_local_cache_lifetime(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Async local trust ends after five minutes even when the shared fetch timestamp is sixty seconds ahead."""
+    wall = [1_000]
+    monotonic = [100.0]
+    monkeypatch.setattr(time, "time", lambda: wall[0])
+    monkeypatch.setattr(time, "monotonic", lambda: monotonic[0])
+    cache = AsyncMemoryKeyCache()
+    calls = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(200, json={"keys": []})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        source = AsyncHttpSigningKeySource(client, "https://partners.anis.ly", cache=cache)
+        cache.values[source._cache_key] = encode_document('{"keys": []}', wall[0] + 60)
+        document = await source.get()
+        assert calls == 0
+        wall[0] += 299
+        monotonic[0] += 299.99
+        assert await source.get() is document
+        assert calls == 0
+        wall[0] = 1_300
+        monotonic[0] = 400.0
+        assert cache.values[source._cache_key] == encode_document('{"keys": []}', 1_060)
+        assert await source.get() is not document
+    assert calls == 1
+
+
+@pytest.mark.parametrize("failed", [False, True])
+@pytest.mark.anyio
+async def test_async_unknown_key_refetch_happens_at_most_once_per_thirty_seconds(
+    monkeypatch: pytest.MonkeyPatch, failed: bool
+) -> None:
+    """Async rotation recovery counts failed fetches and resumes exactly when the cooldown ends."""
+    monotonic = [100.0]
+    monkeypatch.setattr(time, "monotonic", lambda: monotonic[0])
+    calls = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        if failed and calls == 2:
+            return httpx.Response(503)
+        return httpx.Response(200, json={"keys": []})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        source = AsyncHttpSigningKeySource(client, "https://partners.anis.ly")
+        document = await source.get()
+        if failed:
+            with pytest.raises(KeyDocumentUnavailableError):
+                await source.refresh(document)
+        else:
+            document = await source.refresh(document)
+        monotonic[0] += 29.99
+        assert await source.refresh(document) is document
+        assert calls == 2
+        monotonic[0] = 130.0
+        assert await source.refresh(document) is not document
+    assert calls == 3
+
+
+@pytest.mark.anyio
+async def test_async_concurrent_failed_refresh_waiters_do_not_repeat_the_fetch() -> None:
+    """A failed async rotation fetch suppresses repeated network calls by all waiting verifiers."""
+    calls = 0
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        if calls > 1:
+            await asyncio.sleep(0.03)
+            return httpx.Response(503)
+        return httpx.Response(200, json={"keys": []})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        source = AsyncHttpSigningKeySource(client, "https://partners.anis.ly")
+        old = await source.get()
+        results = await asyncio.gather(*(source.refresh(old) for _ in range(8)), return_exceptions=True)
+        assert sum(isinstance(result, KeyDocumentUnavailableError) for result in results) == 1
+        assert sum(result is old for result in results) == 7
+    assert calls == 2

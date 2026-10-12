@@ -1,0 +1,35 @@
+{
+  "label": "sig1",
+  "algorithm": "ecdsa-p256-sha256",
+  "maxSignatureLifetimeSeconds": 300,
+  "crossValidatedAgainst": "anis.partners-access-runtime SignatureEnvelopeParser \u002B SignatureBaseBuilder \u002B P256SignatureVerifier",
+  "total": 9,
+  "profiles": {
+    "safeRead": [
+      "@method",
+      "@authority",
+      "@path",
+      "@query",
+      "x-anis-date"
+    ],
+    "bodylessNonceMutation": [
+      "@method",
+      "@authority",
+      "@path",
+      "@query",
+      "content-digest",
+      "nonce",
+      "x-anis-date"
+    ],
+    "orderMutation": [
+      "@method",
+      "@authority",
+      "@path",
+      "@query",
+      "content-digest",
+      "nonce",
+      "idempotency-key",
+      "x-anis-date"
+    ]
+  }
+}
