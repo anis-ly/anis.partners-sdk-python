@@ -347,6 +347,8 @@ def test_nonpositive_price_is_rejected_before_any_request() -> None:
     try:
         with pytest.raises(ValueError, match="expected_unit_price"):
             client.orders.create(wallet_id=WALLET, operation_id=OPERATION, order=_order("0.000", "0.000"))
+        with pytest.raises(ValueError, match="expected_unit_price"):
+            client.orders.create(wallet_id=WALLET, operation_id=OPERATION, order=_order("-0.001", "-0.001"))
         assert wire.requests == []
     finally:
         client.close()

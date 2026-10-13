@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.0.1] - Unreleased
+
+### Fixed
+
+- A wallet whose balance is below zero — while it uses allowed debt — can be read again. In 2.0.0, listing or reading such a wallet failed with an error. Amounts in Anis's answers may carry a leading minus sign (`-150.000`); `-0.000` reads as zero. `Money` accepts a negative `Decimal` too.
+- Prices you send are unchanged: an order still refuses a unit price that is not greater than zero, before anything is sent.
+- Documentation: the spending-cap refusal (`spending_limit_exceeded`) and the money rule in Orders and recovery; the live-verification note now says which version it covers.
+
 ## [2.0.0] - 2026-10-13
 
 ### Breaking changes

@@ -1,6 +1,6 @@
 # Observability
 
-The SDK uses the OpenTelemetry API, not an OpenTelemetry implementation. Add an SDK/exporter in your application when you want to export signals. Instrumentation uses the versioned scope `anis_partners` (`2.0.0`); logging uses the `anis_partners` logger and structured `event_id` extras. The optional client name defaults to `default` and labels client signals.
+The SDK uses the OpenTelemetry API, not an OpenTelemetry implementation. Add an SDK/exporter in your application when you want to export signals. Instrumentation uses the versioned scope `anis_partners` (`2.0.1`); logging uses the `anis_partners` logger and structured `event_id` extras. The optional client name defaults to `default` and labels client signals.
 
 ## Traces
 

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "anis-partners"
-version = "2.0.0"
+version = "2.0.1"
 description = "The Python SDK for the Anis Partner API — signed requests, verified responses, typed operations."
 readme = "README.md"
 license = "MIT"
