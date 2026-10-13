@@ -34,7 +34,7 @@ request = CreateOrderRequest(
 )
 ```
 
-Money on the wire requires nonnegative amounts with exactly three decimal places and uppercase three-letter currency codes. Python Decimal constructors accept up to three decimal places and pad shorter scales without rounding. The SDK checks positive unit price, quantity, currency, and `unit × quantity` before sending. `external_reference`, when supplied, is limited by the API to 100 characters and its accepted character set. `use_allowed_debt` defaults to false; set it to true only when the buyer has explicitly agreed to use allowed debt.
+Money on the wire has exactly three decimal places and uppercase three-letter currency codes; a wallet balance is negative (for example `-150.000`) while the wallet uses allowed debt, and prices and totals are never negative. Python Decimal constructors accept up to three decimal places and pad shorter scales without rounding. The SDK checks positive unit price, quantity, currency, and `unit × quantity` before sending. `external_reference`, when supplied, is limited by the API to 100 characters and its accepted character set. `use_allowed_debt` defaults to false; set it to true only when the buyer has explicitly agreed to use allowed debt.
 
 ## The five results
 
@@ -75,6 +75,8 @@ match outcome:
 | `OrderReplayed` | The same id already completed; Anis returned the prior result without credentials. | Use an authorized reveal if codes are needed again. |
 | `OrderOutcomeUnknown` | No answer, an unverifiable answer, an uncertain refusal, an access refusal, or a fresh refusal during resume. The original order may have completed. | Resume with the same id and exact request. Never create a replacement id to retry it. |
 | `OrderNotPlaced` | A definitive refusal closed the order. | Fix the cause, then use a new id only for a new attempt. |
+
+A spending-cap refusal (`spending_limit_exceeded`, HTTP 429, `LimitExceededError`) is `OrderNotPlaced`: the order would have taken the application or wallet past its spending cap for the current window, so nothing was bought or charged. `retry_after` is the time until the window ends (windows follow UTC). After it, place a new order with a new id; never resume the refused one.
 
 `RECOVERY EXHAUSTED` means Anis still cannot establish the final result. It is not a failed order. Keep the original id and body, wait several minutes before resuming again, and contact [support@anis.ly](mailto:support@anis.ly) with the operation id if recovery remains exhausted. Never create a replacement id while the outcome may be unknown. A completed result may also state that codes were withheld; record the successful order and use the authorized reveal flow if needed instead of ordering again.
 

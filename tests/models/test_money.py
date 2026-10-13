@@ -47,10 +47,17 @@ def test_money_refuses_more_than_three_decimal_places_on_the_wire() -> None:
         Money.from_json('{"amount":"0.0004","currency":"LYD"}')
 
 
-def test_money_refuses_negative_amounts() -> None:
-    """The shared money contract contains only nonnegative amounts."""
-    with pytest.raises(ValueError, match="negative"):
-        Money(Decimal("-0.001"), "LYD")
+def test_money_holds_a_negative_amount() -> None:
+    """A wallet balance is below zero while the wallet uses allowed debt."""
+    assert Money(Decimal("-150.5"), "LYD").to_wire_amount() == "-150.500"
+    assert str(Money(Decimal("-0.001"), "LYD")) == "-0.001 LYD"
+
+
+def test_money_reads_a_negative_wallet_balance_from_the_wire() -> None:
+    """Read the balance of a wallet in allowed debt instead of refusing the whole wallet answer."""
+    balance = Money.from_json({"amount": "-1250.075", "currency": "LYD", "asOf": "2026-10-14T08:00:00Z"})
+    assert balance.amount == Decimal("-1250.075")
+    assert balance.to_json() == {"amount": "-1250.075", "currency": "LYD", "asOf": "2026-10-14T08:00:00Z"}
 
 
 def test_money_pads_allowed_scale_without_rounding() -> None:
@@ -61,8 +68,7 @@ def test_money_pads_allowed_scale_without_rounding() -> None:
 def test_money_normalizes_negative_zero_instead_of_writing_negative_zero() -> None:
     """Keep zero canonical so signed money text cannot have two spellings for the same value."""
     assert Money(Decimal("-0.000"), "LYD").to_wire_amount() == "0.000"
-    with pytest.raises(ValueError, match="Negative zero"):
-        Money.from_json('{"amount":"-0.000","currency":"LYD"}')
+    assert Money.from_json('{"amount":"-0.000","currency":"LYD"}').to_wire_amount() == "0.000"
 
 
 def test_money_uses_fixed_decimal_context_independent_of_the_host() -> None:
@@ -83,8 +89,8 @@ def test_money_converts_decimal_overflow_into_value_error() -> None:
         Money.from_json('{"amount":"999999999999999999999999999999.000","currency":"LYD"}')
 
 
-@pytest.mark.parametrize("amount", ["-1.000", "1", "1.0", "1.00", "+1.000", "1e3", " 1.000"])
-def test_money_wire_requires_nonnegative_three_place_text(amount: str) -> None:
+@pytest.mark.parametrize("amount", ["-1", "--1.000", "- 1.000", "1", "1.0", "1.00", "+1.000", "1e3", " 1.000"])
+def test_money_wire_requires_three_place_text(amount: str) -> None:
     """The shared public money schema has exactly one amount spelling per supported scale."""
     with pytest.raises(ValueError, match="Money amount"):
         Money.from_json({"amount": amount, "currency": "LYD"})

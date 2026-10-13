@@ -215,3 +215,18 @@ def test_empty_copy_is_omitted_and_wallet_currency_belongs_to_balance() -> None:
     assert wallet.balance.currency == "LYD"
     assert not hasattr(wallet, "currency")
     assert "currency" not in wallet.to_json()
+
+
+def test_wallet_in_allowed_debt_reads_its_negative_balance() -> None:
+    """A wallet using allowed debt has a balance below zero; reading it must not fail."""
+    from anis_partners import Wallet
+
+    wallet = Wallet.from_json(
+        {
+            "id": "00000000-0000-0000-0000-000000000001",
+            "name": "Main",
+            "balance": {"amount": "-150.000", "currency": "LYD"},
+        }
+    )
+    assert wallet.balance.to_wire_amount() == "-150.000"
+    assert wallet.to_json()["balance"] == {"amount": "-150.000", "currency": "LYD"}

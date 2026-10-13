@@ -9,13 +9,17 @@ from anis_partners.models._json import field, object_data, text, timestamp, wire
 
 _SCALE = Decimal("0.001")
 _DECIMAL_PRECISION = 29
-_AMOUNT_TEXT = re.compile(r"[0-9]+\.[0-9]{3}\Z")
+_AMOUNT_TEXT = re.compile(r"-?[0-9]+\.[0-9]{3}\Z")
 _AMOUNT_ERROR = "Anis amounts have at most three decimal places"
 
 
 @dataclass(frozen=True, slots=True)
 class Money:
-    """Keep price arithmetic decimal-only so expected totals cannot drift through binary floats."""
+    """Keep price arithmetic decimal-only so expected totals cannot drift through binary floats.
+
+    An amount Anis sends may be negative: a wallet balance is below zero while the wallet uses allowed debt.
+    Prices and totals are never negative, and an order still refuses a price that is not greater than zero.
+    """
 
     amount: Decimal
     currency: str
@@ -32,8 +36,6 @@ class Money:
             raise ValueError("Money currency must be three uppercase letters.")
         if not self.amount.is_finite():
             raise ValueError("Money amount must be a finite decimal value.")
-        if self.amount < 0:
-            raise ValueError("Money amount must not be negative.")
         if _decimal_places(self.amount) > 3:
             raise ValueError("Anis amounts have at most three decimal places")
         try:
@@ -58,9 +60,7 @@ class Money:
         amount = field(value, "amount")
         if not isinstance(amount, str):
             raise ValueError("Money amount must be a decimal string, never a JSON number.")
-        if amount == "-0.000":
-            raise ValueError("Negative zero is not a valid Anis amount.")
-        if re.fullmatch(r"[0-9]+\.[0-9]{4,}", amount):
+        if re.fullmatch(r"-?[0-9]+\.[0-9]{4,}", amount):
             raise ValueError(_AMOUNT_ERROR)
         if not _AMOUNT_TEXT.fullmatch(amount):
             raise ValueError("Money amount must be plain decimal text.")
@@ -72,8 +72,6 @@ class Money:
             raise ValueError("Money amount must be a finite decimal value.")
         if _decimal_places(decimal_amount) > 3:
             raise ValueError(_AMOUNT_ERROR)
-        if amount.startswith("-") and decimal_amount.is_zero():
-            raise ValueError("Negative zero is not a valid Anis amount.")
         currency = text(field(value, "currency"), "")
         return cls(decimal_amount, currency or "", timestamp(field(value, "asOf")))
 
