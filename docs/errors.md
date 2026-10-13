@@ -66,11 +66,14 @@ The SDK's `ErrorCode` values come from `contracts/error-catalogue.json`; the tab
 | `reveal_not_allowed` | 409 | `AuthorizationError` | no | no |
 | `signature_expired` | 401 | `InvalidCredentialsError` | yes | yes |
 | `source_ip_not_allowed` | 403 | `AuthorizationError` | no | no |
+| `spending_limit_exceeded` | 429 | `LimitExceededError` | no | no |
 | `validation_failed` | 422 | `ValidationFailedError` | no | no |
 | `wallet_disabled` | 409 | `AuthorizationError` | no | no |
 | `wallet_expired` | 409 | `AuthorizationError` | no | no |
 | `wallet_not_granted` | 404 | `ResourceNotFoundError` | no | yes |
 | unknown code | varies | `AnisApiError` | no | yes |
+
+`spending_limit_exceeded` (429) means the application's spending cap for the current window is used up. Nothing was bought and this order is closed; `retry_after` says when a new order, with a new operation id, can succeed. Do not resume this refused order.
 
 The SDK also raises `EnrollmentKeyMismatchError` when the key thumbprint Anis returns differs from the submitted key. It is a local integrity error, not an API refusal.
 

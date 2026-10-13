@@ -36,6 +36,7 @@ DECISIONS: dict[str, tuple[type[AnisApiError], OrderRefusalOutcome]] = {
     "card_unavailable": (OutOfStockError, OrderRefusalOutcome.NOT_PLACED),
     "owner_limit_exceeded": (LimitExceededError, OrderRefusalOutcome.NOT_PLACED),
     "daily_limit_exceeded": (LimitExceededError, OrderRefusalOutcome.NOT_PLACED),
+    "spending_limit_exceeded": (LimitExceededError, OrderRefusalOutcome.NOT_PLACED),
     "allowed_debt_consent_required": (AnisApiError, OrderRefusalOutcome.NOT_PLACED),
     "purchase_not_allowed": (AuthorizationError, OrderRefusalOutcome.NOT_PLACED),
     "wallet_disabled": (AuthorizationError, OrderRefusalOutcome.NOT_PLACED),

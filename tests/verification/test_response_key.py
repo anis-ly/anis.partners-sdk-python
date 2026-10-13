@@ -3,7 +3,7 @@
 import base64
 import json
 from dataclasses import replace
-from datetime import UTC, datetime
+from datetime import UTC, datetime, tzinfo
 
 import pytest
 
@@ -293,7 +293,7 @@ def test_response_profile_requires_the_exact_v2_tag(tag: str | None) -> None:
         ("next", 1, ResponseVerificationFailure.KEY_NOT_YET_VALID),
         ("next", 0, None),
         ("next", -1, None),
-        ("active", 1, None),
+        ("active", 1, ResponseVerificationFailure.KEY_NOT_YET_VALID),
     ],
 )
 @pytest.mark.anyio
@@ -329,6 +329,87 @@ async def test_key_lifecycle_boundaries_match_in_both_verifiers(
         with pytest.raises(UnverifiableResponseError) as caught:
             await async_verifier.verify(response)
         assert caught.value.failure is expected
+
+
+@pytest.mark.parametrize("status", ["active", "next", "retired"])
+@pytest.mark.parametrize("offset", [0, 1])
+@pytest.mark.anyio
+async def test_any_published_key_used_before_not_before_is_not_yet_valid_in_both_verifiers(
+    status: str, offset: int
+) -> None:
+    """Every published key must already be valid when the response was signed, including at the boundary."""
+    from anis_partners.models._json import wire_timestamp
+    from anis_partners.verification.partner_response_verifier import AsyncPartnerResponseVerifier
+    from tests.conformance.test_response_vectors import AsyncStaticKeys
+
+    vector = response_fixture()
+    document = vector["signingKeys"]
+    key = document["keys"][0]
+    key["status"] = status
+    key["notBefore"] = wire_timestamp(datetime.fromtimestamp(vector["verifyAt"] + offset, UTC))
+    if status == "retired":
+        key["retiredAt"] = wire_timestamp(datetime.fromtimestamp(vector["verifyAt"] + 100, UTC))
+    keys = SigningKeySet.from_json(json.dumps(document))
+    response = VerifiableResponse(
+        200, vector["response"]["headers"], b"{}", vector["request"]["signatureInput"], vector["request"]["signature"]
+    )
+    sync = PartnerResponseVerifier(RotatingKeys(keys, keys), FixedClock(vector["verifyAt"]))
+    async_verifier = AsyncPartnerResponseVerifier(AsyncStaticKeys(keys), FixedClock(vector["verifyAt"]))
+    if offset == 0:
+        sync.verify(response)
+        await async_verifier.verify(response)
+    else:
+        with pytest.raises(UnverifiableResponseError) as caught:
+            sync.verify(response)
+        assert caught.value.failure is ResponseVerificationFailure.KEY_NOT_YET_VALID
+        with pytest.raises(UnverifiableResponseError) as caught:
+            await async_verifier.verify(response)
+        assert caught.value.failure is ResponseVerificationFailure.KEY_NOT_YET_VALID
+
+
+@pytest.mark.parametrize("status", ["active", "next", "retired"])
+@pytest.mark.parametrize("fraction", ["0000", "0001"])
+@pytest.mark.anyio
+async def test_fractional_not_before_requires_the_next_whole_created_second_in_both_verifiers(
+    status: str, fraction: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A key activated just after a whole second cannot authenticate a signature created at that second."""
+    import tests.support.sdk_wire as wire_module
+    from anis_partners.verification.partner_response_verifier import AsyncPartnerResponseVerifier
+    from tests.conformance.test_response_vectors import AsyncStaticKeys
+
+    class FixedSigningTime(datetime):
+        @classmethod
+        def now(cls, tz: tzinfo | None = None) -> "FixedSigningTime":
+            return cls(2026, 10, 12, 12, tzinfo=UTC)
+
+    monkeypatch.setattr(wire_module, "datetime", FixedSigningTime)
+
+    vector = response_fixture()
+    document = vector["signingKeys"]
+    key = document["keys"][0]
+    key["status"] = status
+    key["notBefore"] = f"2026-10-12T12:00:00.{fraction}Z"
+    if status == "retired":
+        key["retiredAt"] = "2026-10-12T12:01:00Z"
+    keys = SigningKeySet.from_json(json.dumps(document))
+    response = VerifiableResponse(
+        200, vector["response"]["headers"], b"{}", vector["request"]["signatureInput"], vector["request"]["signature"]
+    )
+    created = int(response.headers["Signature-Input"].split(";created=")[1].split(";")[0])
+    assert datetime.fromtimestamp(created, UTC) == datetime(2026, 10, 12, 12, tzinfo=UTC)
+    sync = PartnerResponseVerifier(RotatingKeys(keys, keys), FixedClock(created))
+    async_verifier = AsyncPartnerResponseVerifier(AsyncStaticKeys(keys), FixedClock(created))
+    if fraction == "0000":
+        sync.verify(response)
+        await async_verifier.verify(response)
+    else:
+        with pytest.raises(UnverifiableResponseError) as caught:
+            sync.verify(response)
+        assert caught.value.failure is ResponseVerificationFailure.KEY_NOT_YET_VALID
+        with pytest.raises(UnverifiableResponseError) as caught:
+            await async_verifier.verify(response)
+        assert caught.value.failure is ResponseVerificationFailure.KEY_NOT_YET_VALID
 
 
 @pytest.mark.parametrize("listed", [True, False])

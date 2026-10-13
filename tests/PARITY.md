@@ -45,3 +45,13 @@
 `tests/operations/test_selective_signing.py::test_answer_signing_is_set_per_route_exactly_as_the_gateway_publishes`, the sync and async `information_route_reads_its_unsigned_answer`, `unsigned_information_refusal_maps_to_its_typed_error`, and `signed_route_without_a_signature_is_refused` tests, and the unsigned order and enrollment tests → prove the information reads are read unsigned (with no key fetch) while every signed route, success or refusal, still fails with `signature_missing` when unsigned.
 
 `tests/verification/test_response_key.py` verifies the v2 tag, raw request-signature binding, compromise precedence without refresh, and retirement/activation boundaries in both clients using fresh signed fixtures. `tests/operations/test_access.py` verifies self-service stop bodies, nonce profiles, state models, reason guards, and the 2.0.0 user agent.
+
+`tests/verification/test_response_key.py::test_any_published_key_used_before_not_before_is_not_yet_valid_in_both_verifiers` → proves every published status rejects pre-activation signatures and accepts the activation instant in both verifiers.
+
+`tests/configuration/test_options.py::test_cache_lifetime_longer_than_five_minutes_is_refused` and the sync/async key-source cache-lifetime tests → prove default trust lasts five minutes and longer settings are refused.
+
+The sync/async `shared_entry_expires_five_minutes_after_its_original_fetch` tests → prove transferring a shared key document never restarts its age.
+
+`tests/verification/test_http_signing_key_source.py::test_unknown_key_refetch_happens_at_most_once_per_thirty_seconds_including_failures` and `tests/verification/test_async_http_signing_key_source.py::test_async_unknown_key_refetch_happens_at_most_once_per_thirty_seconds` → prove both successful and failed refreshes start the same 30-second cooldown; the existing concurrent refresh tests prove callers share one fetch.
+
+`.NET OrderOutcomeTests.A_spending_capped_order_is_not_placed_and_carries_the_signed_retry_after` → `tests/operations/test_pipeline.py::test_spending_capped_order_is_not_placed_and_carries_the_signed_retry_after` and its async counterpart prove a signed spending refusal returns `OrderNotPlaced` with `LimitExceededError`, the verified window reset, and no automatic retry.

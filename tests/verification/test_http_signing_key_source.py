@@ -11,7 +11,7 @@ import httpx
 import pytest
 
 import anis_partners.verification.http_signing_key_source as key_source_module
-from anis_partners._internal.key_document_cache import decode_document
+from anis_partners._internal.key_document_cache import decode_document, encode_document
 from anis_partners.errors import KeyDocumentUnavailableError
 from anis_partners.verification.http_signing_key_source import HttpSigningKeySource
 
@@ -32,7 +32,7 @@ class SharedCache:
 
 
 def test_fetch_cache_and_refresh_use_expected_requests(monkeypatch: pytest.MonkeyPatch) -> None:
-    """First use fetches once, TTL expiry refetches, and explicit refresh always fetches."""
+    """First use fetches once, TTL expiry refetches, and the first unknown-key refresh fetches."""
     calls = 0
     monotonic = [100.0]
     monkeypatch.setattr(time, "monotonic", lambda: monotonic[0])
@@ -339,3 +339,143 @@ def test_key_document_request_uses_identity_and_does_not_follow_redirects() -> N
 
     assert len(observed) == 1
     assert observed[0].headers["Accept-Encoding"] == "identity"
+
+
+def test_cache_lifetime_longer_than_five_minutes_is_refused() -> None:
+    """Direct key-source construction cannot extend trust beyond five minutes."""
+    with httpx.Client() as client:
+        with pytest.raises(ValueError, match="from 1 to 300"):
+            HttpSigningKeySource(client, "https://partners.anis.ly", cache_seconds=301)
+        HttpSigningKeySource(client, "https://partners.anis.ly", cache_seconds=300)
+
+
+def test_default_cache_keeps_the_document_for_five_minutes(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Fetch again as soon as the default five-minute trust window expires."""
+    monotonic = [100.0]
+    monkeypatch.setattr(time, "monotonic", lambda: monotonic[0])
+    calls = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(200, json={"keys": []})
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        source = HttpSigningKeySource(client, "https://partners.anis.ly")
+        document = source.get()
+        monotonic[0] += 299.99
+        assert source.get() is document
+        assert calls == 1
+        monotonic[0] += 0.02
+        assert source.get() is not document
+    assert calls == 2
+
+
+def test_shared_entry_expires_five_minutes_after_its_original_fetch(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A copied cache entry retains only its remaining lifetime and is stale at five minutes."""
+    wall = [1_000]
+    monotonic = [100.0]
+    monkeypatch.setattr(time, "time", lambda: wall[0])
+    monkeypatch.setattr(time, "monotonic", lambda: monotonic[0])
+    shared = SharedCache()
+    calls = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(200, json={"keys": []})
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        source = HttpSigningKeySource(client, "https://partners.anis.ly", cache=shared)
+        shared.values[source._cache_key] = encode_document('{"keys": []}', 701)
+        source.get()
+        assert calls == 0
+        assert decode_document(encode_document('{"keys": []}', 700), now=1_000, ttl_seconds=300) is None
+        wall[0] += 1
+        monotonic[0] += 1
+        source.get()
+    assert calls == 1
+
+
+def test_future_dated_shared_entry_does_not_extend_the_local_cache_lifetime(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A shared timestamp within clock skew cannot keep local keys trusted beyond the configured five minutes."""
+    wall = [1_000]
+    monotonic = [100.0]
+    monkeypatch.setattr(time, "time", lambda: wall[0])
+    monkeypatch.setattr(time, "monotonic", lambda: monotonic[0])
+    shared = SharedCache()
+    calls = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(200, json={"keys": []})
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        source = HttpSigningKeySource(client, "https://partners.anis.ly", cache=shared)
+        shared.values[source._cache_key] = encode_document('{"keys": []}', wall[0] + 60)
+        document = source.get()
+        assert calls == 0
+        wall[0] += 299
+        monotonic[0] += 299.99
+        assert source.get() is document
+        assert calls == 0
+        wall[0] = 1_300
+        monotonic[0] = 400.0
+        assert shared.values[source._cache_key] == encode_document('{"keys": []}', 1_060)
+        assert source.get() is not document
+    assert calls == 1
+
+
+@pytest.mark.parametrize("failed", [False, True])
+def test_unknown_key_refetch_happens_at_most_once_per_thirty_seconds_including_failures(
+    monkeypatch: pytest.MonkeyPatch, failed: bool
+) -> None:
+    """Successful and failed unknown-key fetches both suppress another fetch until the cooldown ends."""
+    monotonic = [100.0]
+    monkeypatch.setattr(time, "monotonic", lambda: monotonic[0])
+    calls = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        if failed and calls == 2:
+            return httpx.Response(503)
+        return httpx.Response(200, json={"keys": []})
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        source = HttpSigningKeySource(client, "https://partners.anis.ly")
+        document = source.get()
+        if failed:
+            with pytest.raises(KeyDocumentUnavailableError):
+                source.refresh(document)
+        else:
+            document = source.refresh(document)
+        monotonic[0] += 29.99
+        assert source.refresh(document) is document
+        assert calls == 2
+        monotonic[0] = 130.0
+        assert source.refresh(document) is not document
+    assert calls == 3
+
+
+def test_concurrent_failed_refresh_waiters_do_not_repeat_the_fetch() -> None:
+    """A failed rotation fetch starts the cooldown for every caller waiting on the same source."""
+    calls = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        if calls > 1:
+            time.sleep(0.03)
+            return httpx.Response(503)
+        return httpx.Response(200, json={"keys": []})
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        source = HttpSigningKeySource(client, "https://partners.anis.ly")
+        old = source.get()
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            futures = [pool.submit(source.refresh, old) for _ in range(8)]
+            assert sum(isinstance(future.exception(), KeyDocumentUnavailableError) for future in futures) == 1
+            assert all(future.result() is old for future in futures if future.exception() is None)
+    assert calls == 2

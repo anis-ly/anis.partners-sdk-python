@@ -12,7 +12,7 @@ class SigningKeySource(Protocol):
         """Reuse current keys or fetch them so every response is checked against a published version."""
 
     def refresh(self, previous: SigningKeySet | None = None) -> SigningKeySet:
-        """Refresh once after an unknown id so a legitimate rotation recovers without retry loops."""
+        """Refresh after an unknown id; HTTP sources limit fetches to once per 30 seconds to prevent forged-id loops."""
 
 
 class AsyncSigningKeySource(Protocol):
@@ -22,4 +22,4 @@ class AsyncSigningKeySource(Protocol):
         """Reuse current keys or fetch them so every response is checked against a published version."""
 
     async def refresh(self, previous: SigningKeySet | None = None) -> SigningKeySet:
-        """Refresh once after an unknown id so a legitimate rotation recovers without retry loops."""
+        """Refresh after an unknown id; HTTP sources limit fetches to once per 30 seconds to prevent forged-id loops."""

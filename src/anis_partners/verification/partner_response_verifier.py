@@ -149,7 +149,8 @@ def _with_keys_phase(context: _PreKeyContext, keys: SigningKeySet, key: Publishe
             return Failure.KEY_REJECTED
         if context.parsed.created > retired_at:
             return Failure.KEY_RETIRED
-    if key.status == "next" and context.parsed.created < not_before:
+    # Signature creation uses whole seconds, so a fractional activation starts at the following second.
+    if context.parsed.created < math.ceil(not_before):
         return Failure.KEY_NOT_YET_VALID
     raw_signature = _signature_bytes(context.signature)
     if raw_signature is None or len(raw_signature) != 64:
@@ -204,7 +205,7 @@ class PartnerResponseVerifier:
             safe_log(
                 self._logger,
                 logging.WARNING,
-                "Unknown signing key %s; refreshing the key document once.",
+                "Unknown signing key %s; requesting a key-document refresh (at most once per 30 seconds).",
                 context.parsed.key_id,
                 event_id=1006,
                 key_id=context.parsed.key_id,
@@ -236,7 +237,7 @@ class AsyncPartnerResponseVerifier:
             safe_log(
                 self._logger,
                 logging.WARNING,
-                "Unknown signing key %s; refreshing the key document once.",
+                "Unknown signing key %s; requesting a key-document refresh (at most once per 30 seconds).",
                 context.parsed.key_id,
                 event_id=1006,
                 key_id=context.parsed.key_id,

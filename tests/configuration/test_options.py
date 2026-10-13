@@ -82,7 +82,7 @@ def test_nonpositive_timeouts_and_cache_lifetimes_are_refused() -> None:
     """Avoid immediate timeouts and unbounded stale signing-key documents."""
     with pytest.raises(ValueError, match=r"ClientOptions.timeout_seconds must be positive"):
         ClientOptions("https://partners.example", timeout_seconds=0)
-    with pytest.raises(ValueError, match=r"ClientOptions.signing_key_cache_seconds must be positive"):
+    with pytest.raises(ValueError, match=r"ClientOptions.signing_key_cache_seconds must be from 1 to 300"):
         ClientOptions("https://partners.example", signing_key_cache_seconds=0)
 
 
@@ -139,10 +139,12 @@ def test_shared_duration_binding_reads_day_prefixed_and_negative_forms() -> None
     options = ClientOptions.from_mapping(
         {
             "authority": "https://partners.example",
-            "signing_key_cache_seconds": "1.00:00:00",
+            "timeout_seconds": "1.00:00:00",
         }
     )
-    assert options.signing_key_cache_seconds == 86_400
+    assert options.timeout_seconds == 86_400
+    with pytest.raises(ValueError, match=r"ClientOptions\.signing_key_cache_seconds must be from 1 to 300"):
+        ClientOptions.from_mapping({"authority": "https://partners.example", "signing_key_cache_seconds": "1.00:00:00"})
     with pytest.raises(ValueError, match="timeout_seconds"):
         ClientOptions.from_mapping({"authority": "https://partners.example", "timeout_seconds": "-00:00:05"})
 
@@ -152,3 +154,14 @@ def test_shared_duration_binding_rejects_out_of_range_time_components(value: str
     """Refuse duration strings that cannot be represented by the shared settings format."""
     with pytest.raises(ValueError, match=r"ClientOptions\.timeout_seconds"):
         ClientOptions.from_mapping({"authority": "https://partners.example", "timeout_seconds": value})
+
+
+def test_cache_lifetime_longer_than_five_minutes_is_refused() -> None:
+    """Keep configured trust within five minutes for direct construction and shared settings."""
+    assert ClientOptions("https://partners.example").signing_key_cache_seconds == 300
+    assert ClientOptions.from_mapping({"authority": "https://partners.example"}).signing_key_cache_seconds == 300
+    assert ClientOptions("https://partners.example", signing_key_cache_seconds=300).signing_key_cache_seconds == 300
+    with pytest.raises(ValueError, match=r"ClientOptions\.signing_key_cache_seconds"):
+        ClientOptions("https://partners.example", signing_key_cache_seconds=301)
+    with pytest.raises(ValueError, match=r"ClientOptions\.signing_key_cache_seconds"):
+        ClientOptions.from_mapping({"authority": "https://partners.example", "SigningKeyCacheDuration": "00:05:01"})

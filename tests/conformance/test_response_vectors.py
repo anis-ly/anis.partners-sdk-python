@@ -90,7 +90,8 @@ def _expected(vector: dict[str, object]) -> str | None:
 
 def test_vector_corpus_is_present() -> None:
     """Require every vector listed by the manifest or discovered in the suite."""
-    assert vector_files("response", "RS")
+    names = {path.stem for path in vector_files("response", "RS")}
+    assert {"RS-112-active-key-before-not-before", "RS-113-retired-key-before-not-before"} <= names
 
 
 @pytest.mark.parametrize("path", vector_files("response", "RS"), ids=lambda path: Path(path).stem)

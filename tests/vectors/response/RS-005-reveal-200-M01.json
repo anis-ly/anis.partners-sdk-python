@@ -16,7 +16,7 @@
       "X-Request-Id": "01J9R2K8T4V6XQ0M3B7C5D9E1F",
       "Content-Digest": "sha-256=:t5UT8d6xARqEX3lyjJmzAAVhfXtUdxiVSSdUjqR6OgQ=:",
       "Signature-Input": "sig1=(\u0022@status\u0022 \u0022content-digest\u0022 \u0022x-request-id\u0022 \u0022signature-input\u0022;req \u0022signature\u0022;req \u0022cache-control\u0022);created=1789804800;keyid=\u0022partner-response-signing/v1-active\u0022;alg=\u0022ecdsa-p256-sha256\u0022;tag=\u0022anis-response-v2\u0022",
-      "Signature": "sig1=:YC7Gk4cUe4O73iMa2myZQQQRsoABjZmkiVIMMWyy0jM0BX1tJBPmqaopDfmZaQd96BeJU1cTEpT0IFDzGgU\u002BZg==:"
+      "Signature": "sig1=:RpmkOY1VA\u002BcfU3rVflBKErCkmwct6HhP05IFsNmWLLRds9fOmOTf0cNGmr2oR721Yorn7GEa47XQ1dgknHnTYA==:"
     },
     "bodyBase64": "eyJzb2xkQ2FyZElkIjoiNGE2YzJlODEtN2IzOS00ZDE1LWEyZjgtM2U3YjljMWQ1MDQ2Iiwic2VyaWFsTnVtYmVyIjoiU04tMDAwMSIsInZvdWNoZXIiOiIxMjM0LTU2NzgtOTAxMiIsInJldmVhbGVkQXQiOiIyMDI2LTA5LTE5VDA4OjA1OjAwWiJ9",
     "bodyUtf8": "{\u0022soldCardId\u0022:\u00224a6c2e81-7b39-4d15-a2f8-3e7b9c1d5046\u0022,\u0022serialNumber\u0022:\u0022SN-0001\u0022,\u0022voucher\u0022:\u00221234-5678-9012\u0022,\u0022revealedAt\u0022:\u00222026-09-19T08:05:00Z\u0022}"

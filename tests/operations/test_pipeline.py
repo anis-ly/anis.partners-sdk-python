@@ -23,6 +23,7 @@ from anis_partners import (
     ClientOptions,
     CreateOrderRequest,
     InsufficientBalanceError,
+    LimitExceededError,
     MalformedResponseError,
     Money,
     OrderCompleted,
@@ -590,6 +591,45 @@ def test_rate_limited_create_without_retry_after_uses_five_seconds() -> None:
     finally:
         client.close()
         http.close()
+
+
+def test_spending_capped_order_is_not_placed_and_carries_the_signed_retry_after() -> None:
+    """Keep a spending refusal closed while exposing the signed delay for a new purchase."""
+    wire = SignedMockWire(
+        lambda request: WireAnswer(429, b'{"status":429,"code":"spending_limit_exceeded"}', {"Retry-After": "3600"})
+    )
+    client, http = _client(wire)
+    try:
+        result = client.orders.create(wallet_id=WALLET, operation_id=OPERATION, order=_order())
+        assert isinstance(result, OrderNotPlaced)
+        assert isinstance(result.refusal, LimitExceededError)
+        assert result.refusal.status == 429
+        assert result.refusal.retry_after == timedelta(seconds=3600)
+        assert not result.refusal.is_retryable
+        assert len([request for request in wire.requests if request.url.path.endswith("/orders")]) == 1
+    finally:
+        client.close()
+        http.close()
+
+
+@pytest.mark.anyio
+async def test_async_spending_capped_order_is_not_placed_and_carries_the_signed_retry_after() -> None:
+    """The async client preserves the same definite refusal and verified spending-window reset."""
+    wire = SignedMockWire(
+        lambda request: WireAnswer(429, b'{"status":429,"code":"spending_limit_exceeded"}', {"Retry-After": "3600"})
+    )
+    http = cast(httpx.AsyncClient, wire.client(async_client=True))
+    async with (
+        http,
+        AsyncAnisPartnersClient(ClientOptions("https://partners.test"), SIGNER, http_client=http) as client,
+    ):
+        result = await client.orders.create(wallet_id=WALLET, operation_id=OPERATION, order=_order())
+        assert isinstance(result, OrderNotPlaced)
+        assert isinstance(result.refusal, LimitExceededError)
+        assert result.refusal.status == 429
+        assert result.refusal.retry_after == timedelta(seconds=3600)
+        assert not result.refusal.is_retryable
+        assert len([request for request in wire.requests if request.url.path.endswith("/orders")]) == 1
 
 
 def test_dependency_refusal_keeps_the_order_open_for_resume() -> None:

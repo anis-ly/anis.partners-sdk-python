@@ -28,6 +28,8 @@ Each request creates a client span named `anis.partners {route}` with span kind 
 
 Only answers on signed routes (orders, reveals, enrollment, and the signature self-test) are verified, so verification failures, discarded-response events, and signing-key fetches come only from those calls. The information reads are answered unsigned and never fetch the signing-key document.
 
+A `refresh` fetch happens at most once per 30 seconds per key source, including failed fetches.
+
 ## Logs
 
 Events use the `anis_partners` logger and put the stable numeric event id in `extra["event_id"]`. Events cover request completion (`1001`), refusals (`1002`), discarded responses (`1003`), order results (`1004`, `1008`), fetched signing keys (`1005`), key refresh after an unknown id (`1006`), and unanswered requests (`1007`). The fetched-key event is INFO and includes its refresh reason and published key count. Request completion and refusal records include route, method, status, request id, and stable error code where available. Request and operation ids are span attributes, not metric dimensions.

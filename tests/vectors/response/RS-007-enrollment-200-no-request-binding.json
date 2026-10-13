@@ -17,7 +17,7 @@
       "Content-Digest": "sha-256=:j5UFnUtKasyaz24lOg60k0RuCSL2gCgjz8qsMOdSW/w=:",
       "Cache-Control": "no-store",
       "Signature-Input": "sig1=(\u0022@status\u0022 \u0022content-digest\u0022 \u0022x-request-id\u0022 \u0022cache-control\u0022);created=1789804800;keyid=\u0022partner-response-signing/v1-active\u0022;alg=\u0022ecdsa-p256-sha256\u0022;tag=\u0022anis-response-v2\u0022",
-      "Signature": "sig1=:FLU4cHyXwzwwfBEkOEUd6cF8xd/KTJgFlpa50ewx4ZhgLvkboj7q4YI0P5tiLr5dySKGeTlpftjkX79gA0EnaQ==:"
+      "Signature": "sig1=:Em/KlUoxsYk2fH7DxKXJl4QmHFLqx3bXcK1QcbDJT6wWCsK3zrWWlagquIo0JT/EwjaDkV8P/J\u002BF4OqWqXuuqA==:"
     },
     "bodyBase64": "eyJrZXlJZCI6IjNmMmE5YzE0LThkNmUtNGIyMS05ZjA3LTVjOGFiMmQ2MWU0MyIsImNoYWxsZW5nZUdlbmVyYXRpb24iOjEsInByb29mU3RhdGUiOiJhY2NlcHRlZCIsImFwcHJvdmFsU3RhdGUiOiJwZW5kaW5nIiwic3RhdGUiOiJwZW5kaW5nQXBwcm92YWwiLCJleHBpcmVzQXQiOiIyMDI2LTA5LTI2VDA4OjAwOjAwWiJ9",
     "bodyUtf8": "{\u0022keyId\u0022:\u00223f2a9c14-8d6e-4b21-9f07-5c8ab2d61e43\u0022,\u0022challengeGeneration\u0022:1,\u0022proofState\u0022:\u0022accepted\u0022,\u0022approvalState\u0022:\u0022pending\u0022,\u0022state\u0022:\u0022pendingApproval\u0022,\u0022expiresAt\u0022:\u00222026-09-26T08:00:00Z\u0022}"
