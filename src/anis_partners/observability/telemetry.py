@@ -7,7 +7,7 @@ from opentelemetry.metrics import Counter, Histogram, Meter, get_meter
 from opentelemetry.trace import Tracer, get_tracer
 
 INSTRUMENTATION_SCOPE = "anis_partners"
-INSTRUMENTATION_VERSION = "2.0.1"
+INSTRUMENTATION_VERSION = "2.1.0"
 USER_AGENT = "anis-partners-python/" + INSTRUMENTATION_VERSION
 T = TypeVar("T")
 

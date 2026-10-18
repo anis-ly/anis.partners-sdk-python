@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.0] - Unreleased
+
+### Added
+
+- Catalogue subcategories expose `category_type` (`categoryType`) with local and international values, and unknown when absent or unrecognized.
+- Catalogue card `category` exposes `type` with the same values and unknown handling. Owned cards, reveals and orders are unchanged.
+
 ## [2.0.1] - 2026-10-13
 
 ### Fixed

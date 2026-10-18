@@ -1,4 +1,4 @@
-# Anis Partners for Python 2.0.1
+# Anis Partners for Python 2.1.0
 
 The Python client for the Anis Partner API. It signs every request, verifies every answer Anis signs, and gives each operation a typed result. The details that can cause duplicate purchases or expose unverified credentials are handled explicitly: caller-owned order ids, recovery outcomes, and response verification have no silent shortcuts.
 
@@ -10,9 +10,9 @@ The Python client for the Anis Partner API. It signs every request, verifies eve
 > https://developers.anis.ly.
 
 ```bash
-pip install anis-partners==2.0.1
+pip install anis-partners==2.1.0
 # or
-uv add anis-partners==2.0.1
+uv add anis-partners==2.1.0
 ```
 
 - [Getting started](https://github.com/anis-ly/anis.partners-sdk-python/blob/main/docs/getting-started.md) — enrollment, configuration, first call, sync and async use
@@ -107,4 +107,4 @@ Use `anis.catalogue.get_card(wallet_id, card_id)` for one wallet-priced catalogu
 
 Self-service stops return signed state: `anis.access.suspend_application(reason)` and `anis.access.revoke_key(key_id, reason)`. Reasons are required and trimmed to 1–500 characters. Resume is staff-only; a revoked key never works again. Both stop calls use a fresh nonce and a body digest without an idempotency key.
 
-1.x is deprecated — upgrade to 2.0.1.
+1.x is deprecated — upgrade to 2.1.0.

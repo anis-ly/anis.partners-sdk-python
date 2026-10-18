@@ -36,7 +36,7 @@ def _assert_stop_requests(wire: SignedMockWire) -> None:
         assert request.content == b'{"reason":"Stop access"}'
         assert "Nonce" in request.headers
         assert "Idempotency-Key" not in request.headers
-        assert request.headers["User-Agent"] == "anis-partners-python/2.0.1"
+        assert request.headers["User-Agent"] == "anis-partners-python/2.1.0"
         assert request.headers["Signature-Input"].split(");")[0] == (
             'sig1=("@method" "@authority" "@path" "@query" "content-digest" "nonce" "x-anis-date"'
         )
