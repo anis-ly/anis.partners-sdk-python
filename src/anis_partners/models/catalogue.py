@@ -107,6 +107,7 @@ class CatalogueSubcategory:
 
     id: UUID = dataclass_field(default_factory=lambda: UUID(int=0))
     category_id: UUID = dataclass_field(default_factory=lambda: UUID(int=0))
+    category_type: CatalogueCategoryType = dataclass_field(default=CatalogueCategoryType.UNKNOWN, kw_only=True)
     name: LocalizedText | None = None
     description: LocalizedText | None = None
     logo: str | None = None
@@ -130,6 +131,9 @@ class CatalogueSubcategory:
             integer(field(value, "displayOrder")),
             boolean(field(value, "available")),
             LocalizedText.from_json(nested["disclaimer"]) if nested["disclaimer"] is not None else None,
+            category_type=lenient_enum(
+                CatalogueCategoryType, field(value, "categoryType"), CatalogueCategoryType.UNKNOWN
+            ),
         )
 
     def to_json(self) -> dict[str, object]:
@@ -154,7 +158,7 @@ class CatalogueCard:
     minimum_quantity: int | None = None
     maximum_quantity: int | None = None
     logo: str | None = None
-    category: CardClassification | None = None
+    category: "CatalogueCardCategory | None" = None
 
     @classmethod
     def from_json(cls, data: object) -> "CatalogueCard":
@@ -179,11 +183,35 @@ class CatalogueCard:
             integer(field(value, "minimumQuantity")) if field(value, "minimumQuantity") is not None else None,
             integer(field(value, "maximumQuantity")) if field(value, "maximumQuantity") is not None else None,
             text(field(value, "logo")),
-            CardClassification.from_json(value["category"]) if value.get("category") is not None else None,
+            CatalogueCardCategory.from_json(value["category"]) if value.get("category") is not None else None,
         )
 
     def to_json(self) -> dict[str, object]:
         """Write nested money values as decimal strings in the gateway's camelCase form."""
+        return model_json(self)
+
+
+@dataclass(frozen=True, slots=True)
+class CatalogueCardCategory:
+    """Describe the catalogue category attached to a wallet-priced card."""
+
+    id: UUID = dataclass_field(default_factory=lambda: UUID(int=0))
+    name: LocalizedText | None = None
+    type: CatalogueCategoryType = CatalogueCategoryType.UNKNOWN
+
+    @classmethod
+    def from_json(cls, data: object) -> "CatalogueCardCategory":
+        """Read the category identity and map unknown category types to Unknown."""
+        value = object_data(data)
+        name = field(value, "name")
+        return cls(
+            identifier(field(value, "id")),
+            LocalizedText.from_json(name) if name is not None else None,
+            lenient_enum(CatalogueCategoryType, field(value, "type"), CatalogueCategoryType.UNKNOWN),
+        )
+
+    def to_json(self) -> dict[str, object]:
+        """Write the exact camelCase catalogue category members."""
         return model_json(self)
 
 

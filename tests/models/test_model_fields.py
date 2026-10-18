@@ -6,13 +6,16 @@ from uuid import UUID
 
 from anis_partners.models import (
     CatalogueCard,
+    CatalogueCardCategory,
     CatalogueCategory,
     CatalogueCategoryType,
     CatalogueSubcategory,
+    LocalizedText,
     MaskedCard,
     Money,
     Order,
     OrderStatus,
+    Page,
     RevealedCredential,
 )
 
@@ -32,6 +35,23 @@ def test_subcategory_without_a_disclaimer_has_none() -> None:
     assert CatalogueSubcategory.from_json('{"id":"7a1c3e5f-2b4d-4f68-8a0c-9e1b3d5f7a2c"}').disclaimer is None
 
 
+def test_subcategory_reads_category_type_leniently() -> None:
+    """Keep category kind available while accepting responses from older or newer servers."""
+    international = CatalogueSubcategory.from_json({"categoryType": "international"})
+    assert international.category_type is CatalogueCategoryType.INTERNATIONAL
+    assert CatalogueSubcategory.from_json({"categoryType": "local"}).category_type is CatalogueCategoryType.LOCAL
+    assert CatalogueSubcategory.from_json({}).category_type is CatalogueCategoryType.UNKNOWN
+    assert CatalogueSubcategory.from_json({"categoryType": "galactic"}).category_type is CatalogueCategoryType.UNKNOWN
+
+
+def test_subcategory_positional_constructor_keeps_name_argument() -> None:
+    """Keep the original positional constructor arguments stable."""
+    name = LocalizedText(en="Games")
+    subcategory = CatalogueSubcategory(UUID(int=1), UUID(int=2), name)
+    assert subcategory.name is name
+    assert subcategory.category_type is CatalogueCategoryType.UNKNOWN
+
+
 def test_catalogue_card_reads_its_quantity_limits() -> None:
     """Expose live card limits before a partner submits an order."""
     card = CatalogueCard.from_json(
@@ -46,6 +66,46 @@ def test_catalogue_card_without_quantity_limits_has_none() -> None:
     card = CatalogueCard.from_json('{"id":"8d4b1e73-9a25-4c60-8f37-6b2e9d5a1c48"}')
     assert card.minimum_quantity is None
     assert card.maximum_quantity is None
+
+
+def test_catalogue_card_category_reads_type_leniently() -> None:
+    """Expose catalogue category kind while retaining its id and localized name."""
+    for kind, expected in (
+        ("local", CatalogueCategoryType.LOCAL),
+        ("international", CatalogueCategoryType.INTERNATIONAL),
+    ):
+        category = CatalogueCard.from_json(
+            {
+                "category": {
+                    "id": "00000000-0000-0000-0000-000000000001",
+                    "name": {"en": "Digital"},
+                    "type": kind,
+                }
+            }
+        ).category
+        assert isinstance(category, CatalogueCardCategory)
+        assert category.type is expected
+        assert category.id == UUID("00000000-0000-0000-0000-000000000001")
+        assert category.name is not None
+        assert category.name.en == "Digital"
+    missing = CatalogueCard.from_json(
+        {"category": {"id": "00000000-0000-0000-0000-000000000001", "name": {"en": "Digital"}}}
+    ).category
+    unknown = CatalogueCard.from_json({"category": {"type": "galactic"}}).category
+    assert missing is not None
+    assert missing.type is CatalogueCategoryType.UNKNOWN
+    assert unknown is not None
+    assert unknown.type is CatalogueCategoryType.UNKNOWN
+
+
+def test_subcategory_page_carries_category_type() -> None:
+    """Keep category kind when decoding a paged subcategory answer."""
+    page = Page.from_json(
+        {"items": [{"id": "00000000-0000-0000-0000-000000000001", "categoryType": "local"}], "nextCursor": "next"},
+        CatalogueSubcategory.from_json,
+    )
+    assert page.items[0].category_type is CatalogueCategoryType.LOCAL
+    assert page.next_cursor == "next"
 
 
 def test_order_reads_its_reference_failure_code_and_withheld_flag() -> None:
@@ -186,7 +246,7 @@ def test_card_summary_round_trips_in_masked_revealed_and_order_answers() -> None
 
 def test_catalogue_card_and_subcategory_list_keep_logo_category_and_description() -> None:
     """Expose shared catalogue display context and purchase guidance on list and single reads."""
-    category = {"id": "00000000-0000-0000-0000-000000000001", "name": {"en": "Digital"}}
+    category = {"id": "00000000-0000-0000-0000-000000000001", "name": {"en": "Digital"}, "type": "local"}
     card = CatalogueCard.from_json(
         {"logo": "https://assets.anis.ly/card.png", "category": category, "minimumQuantity": 1, "maximumQuantity": 100}
     )
@@ -194,9 +254,13 @@ def test_catalogue_card_and_subcategory_list_keep_logo_category_and_description(
     assert card.category is not None
     assert card.category.to_json() == category
     assert card.to_json()["category"] == category
-    subcategory = CatalogueSubcategory.from_json({"description": {"ar": "وصف", "en": "Description"}})
+    subcategory = CatalogueSubcategory.from_json(
+        {"description": {"ar": "وصف", "en": "Description"}, "categoryType": "international"}
+    )
     assert subcategory.description is not None
+    assert subcategory.category_type is CatalogueCategoryType.INTERNATIONAL
     assert subcategory.to_json()["description"] == {"ar": "وصف", "en": "Description"}
+    assert subcategory.to_json()["categoryType"] == "international"
 
 
 def test_empty_copy_is_omitted_and_wallet_currency_belongs_to_balance() -> None:

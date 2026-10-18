@@ -10,6 +10,7 @@ from anis_partners.models.cards import (
 from anis_partners.models.catalogue import (
     CardClassification,
     CatalogueCard,
+    CatalogueCardCategory,
     CatalogueCategory,
     CatalogueCategoryType,
     CatalogueSubcategory,
@@ -51,6 +52,7 @@ __all__ = [
     "CardClassification",
     "CardSummary",
     "CatalogueCard",
+    "CatalogueCardCategory",
     "CatalogueCategory",
     "CatalogueCategoryType",
     "CatalogueSubcategory",
