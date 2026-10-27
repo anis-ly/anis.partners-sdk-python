@@ -1,5 +1,25 @@
 # Changelog
 
+## [2.2.0] - <date placeholder>
+
+### Added
+
+- Charge electricity meters and read receipts, tokens and refunds with safe recovery after an interrupted request.
+- Quote direct recharges, follow them and correct recipient details while a direct recharge is paused.
+- Manage a webhook endpoint and request delivery again when a notification was missed.
+- Verify notifications before reading their contents and keep recipient field errors available to the integration.
+
+### Changed
+
+- `idempotency_conflict` on a meter charge or direct recharge create or resume is now an unknown outcome (`MeterChargeOutcomeUnknown` / `DirectRechargeOutcomeUnknown`), not "not placed": the operation may already have been accepted and charged, so read it by its id with `get` before any new attempt. Card orders are unchanged.
+- A meter charge read as `failed` with a `pending` refund is reported as processing, not final: the money was taken and the refund is on its way.
+- Reading a meter charge or direct recharge that was closed with a recorded refusal raises the typed API error with `is_replayed` set.
+- A webhook endpoint URL must have a host name that contains a dot.
+
+### Security
+
+- A key published for webhooks can no longer verify an API answer; a key without a purpose still verifies, as before.
+
 ## [2.1.0] - 2026-10-18
 
 ### Added

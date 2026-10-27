@@ -82,6 +82,62 @@ A spending-cap refusal (`spending_limit_exceeded`, HTTP 429, `LimitExceededError
 
 The sync and async clients raise `ValueError` or `TypeError` directly for invalid caller arguments, including malformed ids, a missing order, or invalid quantity and price arithmetic. These checks happen before a request is built or sent. Once those arguments are valid, a request-signing failure such as a signer or serialization problem raises `RequestSigningError` before send and is never an unknown order result. A transport timeout, connection failure, or discarded answer after handoff is `OrderOutcomeUnknown`.
 
+## Meter charges and direct recharges
+
+A meter charge (`meter_charges.create`) and a direct recharge (`direct_recharges.create`) spend money exactly like an order and follow the same rules. Your application owns the operation id and the unchanged request: record both before the call, and recover with `resume` using the same id, wallet and request. Resuming sends a fresh signature and nonce for identical bytes; it never makes a new purchase.
+
+```python
+from anis_partners import (
+    CreateMeterChargeRequest,
+    MeterChargeFinal,
+    MeterChargeNotPlaced,
+    MeterChargeOutcomeUnknown,
+    MeterChargeProcessing,
+)
+
+
+def charge(charge_request: CreateMeterChargeRequest) -> None:
+    database.record_meter_intent(operation_id, wallet_id, charge_request)  # before sending
+    result = anis.meter_charges.create(wallet_id=wallet_id, operation_id=operation_id, request=charge_request)
+    match result:
+        case MeterChargeFinal(charge=done):
+            database.record_meter_result(operation_id, done)  # succeeded, or failed with its refund decided
+        case MeterChargeProcessing(retry_after=delay):
+            schedule_resume(operation_id, delay)  # still working: resume or read later
+        case MeterChargeOutcomeUnknown(suggested_delay=delay):
+            schedule_resume(operation_id, delay)  # same id, same request
+        case MeterChargeNotPlaced(refusal=refusal):
+            close_without_charge(operation_id, refusal)
+```
+
+`DirectRechargeResult` has the same four cases (`DirectRechargeFinal`, `DirectRechargeProcessing`, `DirectRechargeNotPlaced`, `DirectRechargeOutcomeUnknown`).
+
+- **Processing.** Anis accepted the request and answers with only the operation id, its type and `processing`. Wait the suggested delay, then resume or read the operation. A direct recharge that is paid, pending, in progress, paused or waiting for a refund is still in progress; only a final status closes it.
+- **Final.** A succeeded charge, a failed charge whose refund is decided (`refunded` or `notCharged`), or a completed, payment-failed or rejected-with-refund direct recharge. A failed charge with a decided refund is a final result, not a refusal and not an exception. A partial refund alone does not complete a direct recharge. A failed charge whose refund is still `pending` is not final: the money was taken and the refund is on its way, so it is reported as processing with the read attached. Read again or wait for the `meterCharge.failed` webhook.
+- **Not placed.** A definitive refusal on the first call, or a recorded refusal returned again. Fix the cause and use a new id only for a new attempt. `idempotency_conflict` is never reported as not placed (see Unknown).
+- **Unknown.** A timeout, a lost or unreadable answer, an answer whose signature cannot be verified, or an answer about a different operation. The original may have been placed: resume with the same id. A refusal that is not a recorded replay stays unknown when you resume. `idempotency_conflict` on a create or a resume is always unknown: the operation may already have been accepted and charged, so read the operation by its id with `get` before any new attempt.
+
+Reading with `meter_charges.get` and `direct_recharges.get` returns the full signed read once Anis has recorded the operation. Before that it returns the three-member processing answer (`MeterChargeAccepted` / `DirectRechargeAccepted`), which never carries receipt, price or recipient fields. The two shapes are separate models; do not treat the missing members of a processing answer as zero or empty.
+
+When the operation was closed with a recorded refusal (a signed 409 or 422 sent with `Idempotency-Replayed: true`), `get` raises the typed API error for that code instead of returning a read. `raw_code` carries the code and `is_replayed` is `True`. That is the definitive answer for that id, including for `idempotency_conflict`.
+
+If the retried id was never recorded and Anis cannot prove it belongs to you, it answers processing for up to 60 seconds and then closes the operation as failed with `idempotency_conflict`. The SDK reports that verified answer as an unknown outcome, because the operation may already have been accepted and charged, and never creates a replacement id. Read the operation by its id with `get`: for an id that is not yours the read answers not found, and for a closed conflict it raises the recorded refusal.
+
+Correcting a recipient (`update_recipient`), setting or testing the webhook endpoint and requesting redelivery are signed changes, not purchases. They carry no idempotency key and the SDK never retries them: after a failure, read the direct recharge, endpoint or delivery list first and then decide whether to send the change again.
+
+A successful recipient correction returns `DirectRechargeProcessing`, the same result type as a 202 direct recharge create. Its `recharge` holds a `DirectRechargeAccepted` acknowledgement with exactly `operationId`, `operationType: directRecharge` and `status: processing`. The result’s `location` holds the signed `Location` response header for `GET /v1/direct-recharges/{operationId}`; it remains separate from the acknowledgement JSON. `retry_after` uses the same response-header mapping as creates. No direct recharge body is returned. This applies to both sync and async clients.
+
+```python
+from anis_partners import UpdateDirectRechargeRecipientRequest
+
+acknowledgement = anis.direct_recharges.update_recipient(
+    operation_id, UpdateDirectRechargeRecipientRequest(request.recipient)
+)
+print(acknowledgement.recharge.to_json(), acknowledgement.location)
+```
+
+Read `direct_recharges.get(acknowledgement.operation_id)` later or wait for a verified `directRecharge.*` webhook. An immediate GET can still show the old `suspendedDataError` state while the read side catches up. Never automatically repeat the PATCH after a 202 or a lost answer: an already-applied correction can be refused as `direct_recharge_not_suspended`.
+
 ## Resume the saved intent
 
 ```python

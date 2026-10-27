@@ -27,6 +27,15 @@ GATEWAY_UNSIGNED_ROUTES: tuple[tuple[str, re.Pattern[str]], ...] = tuple(
     (method, re.compile(pattern))
     for method, pattern in (
         ("GET", r"/v1/profile"),
+        ("GET", rf"/v1/wallets/{_ID}/meter-packages"),
+        ("GET", rf"/v1/wallets/{_ID}/meter-charges"),
+        ("GET", rf"/v1/wallets/{_ID}/direct-recharge-products"),
+        ("GET", rf"/v1/wallets/{_ID}/direct-recharge-products/{_ID}"),
+        ("GET", rf"/v1/wallets/{_ID}/direct-recharge-products/{_ID}/locations"),
+        ("GET", rf"/v1/wallets/{_ID}/direct-recharge-products/{_ID}/quote"),
+        ("GET", rf"/v1/wallets/{_ID}/direct-recharges"),
+        ("GET", r"/v1/webhook-endpoint"),
+        ("GET", r"/v1/webhook-events"),
         ("GET", r"/v1/wallets"),
         ("GET", rf"/v1/wallets/{_ID}"),
         ("GET", rf"/v1/wallets/{_ID}/catalog/cards/{_ID}"),

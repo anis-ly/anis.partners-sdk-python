@@ -1,0 +1,28 @@
+{
+  "items": [
+    {
+      "operationId": "7d4e1a90-5b2c-4e7f-8a13-0c9d6e2b4f81",
+      "status": "completed",
+      "number": 30412,
+      "product": {
+        "id": "e7c2a9d4-1b3f-4a85-9c60-8d2e4f7b1a93",
+        "title": "فودافون كاش مصر"
+      },
+      "payout": {
+        "amount": "1500.000",
+        "currency": {
+          "name": "جنيه مصري"
+        }
+      },
+      "total": {
+        "amount": "237.500",
+        "currency": "LYD"
+      },
+      "externalReference": "POS-77-TR-551",
+      "requestedAt": "2026-10-20T09:00:00Z",
+      "completedAt": "2026-10-20T09:14:00Z",
+      "hasPartialRefund": false
+    }
+  ],
+  "nextCursor": null
+}

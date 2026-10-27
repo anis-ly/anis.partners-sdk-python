@@ -1,6 +1,7 @@
 """RFC 9457 problem details and Anis's machine-readable extensions."""
 
 from dataclasses import dataclass
+from dataclasses import field as dataclass_field
 
 from anis_partners.models._json import field, integer, model_json, object_data, text
 
@@ -13,9 +14,9 @@ class Problem:
     title: str | None = None
     status: int = 0
     code: str | None = None
-    detail: str | None = None
+    detail: str | None = dataclass_field(default=None, repr=False)
     request_id: str | None = None
-    extensions: object | None = None
+    extensions: object | None = dataclass_field(default=None, repr=False)
 
     @classmethod
     def from_json(cls, data: object) -> "Problem":

@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import AsyncIterator, Callable, Iterator
+from dataclasses import replace
 from datetime import timedelta
 from typing import TypeVar
-from urllib.parse import quote
+from urllib.parse import quote, urlencode
 from uuid import UUID
 
 import httpx
@@ -32,14 +33,63 @@ from anis_partners.models import (
     SignatureDiagnostic,
     Wallet,
 )
+from anis_partners.models._json import object_data
+from anis_partners.models.direct_recharge_products import (
+    DirectRechargeAmountIn,
+    DirectRechargeLocation,
+    DirectRechargeLocationsQuery,
+    DirectRechargeProduct,
+    DirectRechargeProductsQuery,
+    DirectRechargeProductSummary,
+    DirectRechargeQuote,
+)
+from anis_partners.models.direct_recharges import (
+    CreateDirectRechargeRequest,
+    DirectRecharge,
+    DirectRechargeAccepted,
+    DirectRechargesQuery,
+    DirectRechargeSummary,
+    UpdateDirectRechargeRecipientRequest,
+)
+from anis_partners.models.meter_charges import (
+    CreateMeterChargeRequest,
+    MeterCharge,
+    MeterChargeAccepted,
+    MeterChargesQuery,
+    MeterChargeSummary,
+    MeterPackage,
+)
+from anis_partners.models.product_results import (
+    DirectRechargeNotPlaced,
+    DirectRechargeOutcomeUnknown,
+    DirectRechargeProcessing,
+    DirectRechargeResult,
+    MeterChargeNotPlaced,
+    MeterChargeOutcomeUnknown,
+    MeterChargeResult,
+)
+from anis_partners.models.webhooks import (
+    SetWebhookEndpointRequest,
+    WebhookEndpoint,
+    WebhookEvent,
+    WebhookEventAccepted,
+    WebhookEventsQuery,
+)
 from anis_partners.operations.routes import PARTNER_ROUTES
 from anis_partners.operations.transport import (
     AsyncTransport,
     RequestCore,
     RequestSpec,
     SyncTransport,
+    classify_direct_recharge,
+    classify_meter_charge,
     classify_order,
     classify_refusal,
+    product_refusal_delay,
+    product_refusal_is_final,
+    read_direct_recharge,
+    read_meter_charge,
+    read_recipient_update,
     record_order_outcome,
     record_unknown_order,
     validate_order,
@@ -692,3 +742,715 @@ class AsyncOrderOperations:
                 reason = "other"
         record_order_outcome(self._transport.core, outcome, str(operation), reason)
         return outcome
+
+
+def _query_path(path: str, values: dict[str, object]) -> str:
+    """Encode each raw query value exactly once, preserving opaque cursor text."""
+    query = urlencode(
+        {key: str(value) for key, value in values.items() if value is not None}, quote_via=quote, safe="-_.~"
+    )
+    return path + ("?" + query if query else "")
+
+
+class SyncMeterChargeOperations:
+    """Create and recover the saved purchase intent under the original operation id."""
+
+    def __init__(self, transport: SyncTransport) -> None:
+        self._transport = transport
+
+    def get_meter_packages_page(self, wallet_id: UUID | str, cursor: str | None = None) -> Page[MeterPackage]:
+        """Read one page without replaying purchases or verifying unsigned answers."""
+        wallet = _id(wallet_id, "wallet_id")
+        route = "/v1/wallets/{walletId}/meter-packages"
+        path = _query_path(f"/v1/wallets/{wallet}/meter-packages", {"cursor": cursor})
+        return (
+            self._transport.send(_spec(self._transport.core, "GET", route, path), _page_reader(MeterPackage.from_json))
+        )[0]
+
+    def get_meter_packages(self, wallet_id: UUID | str) -> Iterator[MeterPackage]:
+        """Follow every cursor while retaining filters and refusing a repeated continuation."""
+        cursor = None
+        seen: set[str] = set()
+        while True:
+            page = self.get_meter_packages_page(wallet_id, cursor)
+            yield from page.items
+            cursor = _next_cursor(page.next_cursor, seen)
+            if cursor is None:
+                return
+
+    def get_meter_charges_page(
+        self, wallet_id: UUID | str, query: MeterChargesQuery | None = None
+    ) -> Page[MeterChargeSummary]:
+        """Read one page without replaying purchases or verifying unsigned answers."""
+        wallet = _id(wallet_id, "wallet_id")
+        route = "/v1/wallets/{walletId}/meter-charges"
+        path = _query_path(f"/v1/wallets/{wallet}/meter-charges", query.to_json() if query is not None else {})
+        return (
+            self._transport.send(
+                _spec(self._transport.core, "GET", route, path), _page_reader(MeterChargeSummary.from_json)
+            )
+        )[0]
+
+    def get_meter_charges(
+        self, wallet_id: UUID | str, query: MeterChargesQuery | None = None
+    ) -> Iterator[MeterChargeSummary]:
+        """Follow every cursor while retaining filters and refusing a repeated continuation."""
+        current = query or MeterChargesQuery()
+        seen: set[str] = {current.cursor} if current.cursor is not None else set()
+        while True:
+            page = self.get_meter_charges_page(wallet_id, current)
+            yield from page.items
+            cursor = _next_cursor(page.next_cursor, seen)
+            if cursor is None:
+                return
+            current = replace(current, cursor=cursor)
+
+    def create(
+        self, *, wallet_id: UUID | str, operation_id: UUID | str, request: CreateMeterChargeRequest
+    ) -> MeterChargeResult:
+        """Send the caller-persisted id and unchanged intent with fresh signing material."""
+        return self._send(wallet_id, operation_id, request, False)
+
+    def resume(
+        self, *, wallet_id: UUID | str, operation_id: UUID | str, request: CreateMeterChargeRequest
+    ) -> MeterChargeResult:
+        """Send the caller-persisted id and unchanged intent with fresh signing material."""
+        return self._send(wallet_id, operation_id, request, True)
+
+    def get(self, operation_id: UUID | str) -> MeterCharge | MeterChargeAccepted:
+        """Read signed state, preserving a processing acceptance before owner projection."""
+        operation = _id(operation_id, "operation_id")
+        route = "/v1/meter-charges/{operationId}"
+        data, response, _ = self._transport.send(
+            _spec(self._transport.core, "GET", route, f"/v1/meter-charges/{operation}"), object_data
+        )
+        return read_meter_charge(data, response, operation)
+
+    def _send(
+        self, wallet_id: UUID | str, operation_id: UUID | str, request: CreateMeterChargeRequest, resuming: bool
+    ) -> MeterChargeResult:
+        wallet, operation = _id(wallet_id, "wallet_id"), _id(operation_id, "operation_id")
+        if request is None:
+            raise TypeError("request cannot be None.")
+        route = "/v1/wallets/{walletId}/meter-charges"
+        spec = _spec(self._transport.core, "POST", route, f"/v1/wallets/{wallet}/meter-charges", request, operation)
+        try:
+            data, response, _ = self._transport.send(spec, object_data)
+            model = read_meter_charge(data, response, operation)
+            return classify_meter_charge(model, response)
+        except AnisApiError as exc:
+            if product_refusal_is_final(exc, resuming, meter=True):
+                return MeterChargeNotPlaced(operation, exc)
+            return MeterChargeOutcomeUnknown(operation, product_refusal_delay(exc), exc)
+        except RequestSigningError:
+            raise
+        except Exception as exc:
+            return MeterChargeOutcomeUnknown(operation, timedelta(seconds=5), exc)
+
+
+class SyncDirectRechargeOperations:
+    """Create and recover the saved purchase intent under the original operation id."""
+
+    def __init__(self, transport: SyncTransport) -> None:
+        self._transport = transport
+
+    def get_direct_recharges_page(
+        self, wallet_id: UUID | str, query: DirectRechargesQuery | None = None
+    ) -> Page[DirectRechargeSummary]:
+        """Read one page without replaying purchases or verifying unsigned answers."""
+        wallet = _id(wallet_id, "wallet_id")
+        route = "/v1/wallets/{walletId}/direct-recharges"
+        path = _query_path(f"/v1/wallets/{wallet}/direct-recharges", query.to_json() if query is not None else {})
+        return (
+            self._transport.send(
+                _spec(self._transport.core, "GET", route, path), _page_reader(DirectRechargeSummary.from_json)
+            )
+        )[0]
+
+    def get_direct_recharges(
+        self, wallet_id: UUID | str, query: DirectRechargesQuery | None = None
+    ) -> Iterator[DirectRechargeSummary]:
+        """Follow every cursor while retaining filters and refusing a repeated continuation."""
+        current = query or DirectRechargesQuery()
+        seen: set[str] = {current.cursor} if current.cursor is not None else set()
+        while True:
+            page = self.get_direct_recharges_page(wallet_id, current)
+            yield from page.items
+            cursor = _next_cursor(page.next_cursor, seen)
+            if cursor is None:
+                return
+            current = replace(current, cursor=cursor)
+
+    def create(
+        self, *, wallet_id: UUID | str, operation_id: UUID | str, request: CreateDirectRechargeRequest
+    ) -> DirectRechargeResult:
+        """Send the caller-persisted id and unchanged intent with fresh signing material."""
+        return self._send(wallet_id, operation_id, request, False)
+
+    def resume(
+        self, *, wallet_id: UUID | str, operation_id: UUID | str, request: CreateDirectRechargeRequest
+    ) -> DirectRechargeResult:
+        """Send the caller-persisted id and unchanged intent with fresh signing material."""
+        return self._send(wallet_id, operation_id, request, True)
+
+    def get(self, operation_id: UUID | str) -> DirectRecharge | DirectRechargeAccepted:
+        """Read signed state, preserving a processing acceptance before owner projection."""
+        operation = _id(operation_id, "operation_id")
+        route = "/v1/direct-recharges/{operationId}"
+        data, response, _ = self._transport.send(
+            _spec(self._transport.core, "GET", route, f"/v1/direct-recharges/{operation}"), object_data
+        )
+        return read_direct_recharge(data, response, operation)
+
+    def _send(
+        self, wallet_id: UUID | str, operation_id: UUID | str, request: CreateDirectRechargeRequest, resuming: bool
+    ) -> DirectRechargeResult:
+        wallet, operation = _id(wallet_id, "wallet_id"), _id(operation_id, "operation_id")
+        if request is None:
+            raise TypeError("request cannot be None.")
+        route = "/v1/wallets/{walletId}/direct-recharges"
+        spec = _spec(self._transport.core, "POST", route, f"/v1/wallets/{wallet}/direct-recharges", request, operation)
+        try:
+            data, response, _ = self._transport.send(spec, object_data)
+            model = read_direct_recharge(data, response, operation)
+            return classify_direct_recharge(model, response)
+        except AnisApiError as exc:
+            if product_refusal_is_final(exc, resuming, meter=False):
+                return DirectRechargeNotPlaced(operation, exc)
+            return DirectRechargeOutcomeUnknown(operation, product_refusal_delay(exc), exc)
+        except RequestSigningError:
+            raise
+        except Exception as exc:
+            return DirectRechargeOutcomeUnknown(operation, timedelta(seconds=5), exc)
+
+    def update_recipient(
+        self, operation_id: UUID | str, request: UpdateDirectRechargeRecipientRequest
+    ) -> DirectRechargeProcessing:
+        """Sign the exact recipient bytes once without a purchase key or recovery replay."""
+        operation = _id(operation_id, "operation_id")
+        route = "/v1/direct-recharges/{operationId}/recipient"
+        data, response, _ = self._transport.send(
+            _spec(self._transport.core, "PATCH", route, f"/v1/direct-recharges/{operation}/recipient", request),
+            object_data,
+        )
+        return read_recipient_update(data, response, operation)
+
+
+class SyncDirectRechargeProductOperations:
+    """Read wallet-priced products, dynamic recipient fields, locations and quotes."""
+
+    def __init__(self, transport: SyncTransport) -> None:
+        self._transport = transport
+
+    def get_direct_recharge_products_page(
+        self, wallet_id: UUID | str, query: DirectRechargeProductsQuery | None = None
+    ) -> Page[DirectRechargeProductSummary]:
+        """Read one page without replaying purchases or verifying unsigned answers."""
+        wallet = _id(wallet_id, "wallet_id")
+        route = "/v1/wallets/{walletId}/direct-recharge-products"
+        path = _query_path(
+            f"/v1/wallets/{wallet}/direct-recharge-products", query.to_json() if query is not None else {}
+        )
+        return (
+            self._transport.send(
+                _spec(self._transport.core, "GET", route, path), _page_reader(DirectRechargeProductSummary.from_json)
+            )
+        )[0]
+
+    def get_direct_recharge_products(
+        self, wallet_id: UUID | str, query: DirectRechargeProductsQuery | None = None
+    ) -> Iterator[DirectRechargeProductSummary]:
+        """Follow every cursor while retaining filters and refusing a repeated continuation."""
+        current = query or DirectRechargeProductsQuery()
+        seen: set[str] = {current.cursor} if current.cursor is not None else set()
+        while True:
+            page = self.get_direct_recharge_products_page(wallet_id, current)
+            yield from page.items
+            cursor = _next_cursor(page.next_cursor, seen)
+            if cursor is None:
+                return
+            current = replace(current, cursor=cursor)
+
+    def get(self, wallet_id: UUID | str, product_id: UUID | str) -> DirectRechargeProduct:
+        """Read the dynamic fields for this wallet's selected product."""
+        wallet, product = _id(wallet_id, "wallet_id"), _id(product_id, "product_id")
+        route = "/v1/wallets/{walletId}/direct-recharge-products/{productId}"
+        return (
+            self._transport.send(
+                _spec(self._transport.core, "GET", route, f"/v1/wallets/{wallet}/direct-recharge-products/{product}"),
+                DirectRechargeProduct.from_json,
+            )
+        )[0]
+
+    def get_direct_recharge_product_locations_page(
+        self, wallet_id: UUID | str, product_id: UUID | str, query: DirectRechargeLocationsQuery | None = None
+    ) -> Page[DirectRechargeLocation]:
+        """Read one page without replaying purchases or verifying unsigned answers."""
+        wallet = _id(wallet_id, "wallet_id")
+        product = _id(product_id, "product_id")
+        route = "/v1/wallets/{walletId}/direct-recharge-products/{productId}/locations"
+        path = _query_path(
+            f"/v1/wallets/{wallet}/direct-recharge-products/{product}/locations",
+            query.to_json() if query is not None else {},
+        )
+        return (
+            self._transport.send(
+                _spec(self._transport.core, "GET", route, path), _page_reader(DirectRechargeLocation.from_json)
+            )
+        )[0]
+
+    def get_direct_recharge_product_locations(
+        self, wallet_id: UUID | str, product_id: UUID | str, query: DirectRechargeLocationsQuery | None = None
+    ) -> Iterator[DirectRechargeLocation]:
+        """Follow every cursor while retaining filters and refusing a repeated continuation."""
+        current = query or DirectRechargeLocationsQuery()
+        seen: set[str] = {current.cursor} if current.cursor is not None else set()
+        while True:
+            page = self.get_direct_recharge_product_locations_page(wallet_id, product_id, current)
+            yield from page.items
+            cursor = _next_cursor(page.next_cursor, seen)
+            if cursor is None:
+                return
+            current = replace(current, cursor=cursor)
+
+    def quote(
+        self, wallet_id: UUID | str, product_id: UUID | str, amount: str, amount_in: DirectRechargeAmountIn
+    ) -> DirectRechargeQuote:
+        """Quote exact decimal text in LYD or the product's payout currency."""
+        wallet, product = _id(wallet_id, "wallet_id"), _id(product_id, "product_id")
+        if amount_in not in {DirectRechargeAmountIn.LYD, DirectRechargeAmountIn.FX}:
+            raise ValueError("amount_in must be lyd or fx.")
+        if not isinstance(amount, str):
+            raise TypeError("amount must be decimal text.")
+        route = "/v1/wallets/{walletId}/direct-recharge-products/{productId}/quote"
+        path = _query_path(
+            f"/v1/wallets/{wallet}/direct-recharge-products/{product}/quote", {"amount": amount, "amountIn": amount_in}
+        )
+        return (self._transport.send(_spec(self._transport.core, "GET", route, path), DirectRechargeQuote.from_json))[0]
+
+
+class SyncWebhookEndpointOperations:
+    """Manage the admitted application endpoint without a product scope or purchase recovery."""
+
+    def __init__(self, transport: SyncTransport) -> None:
+        self._transport = transport
+
+    def get(self) -> WebhookEndpoint:
+        """Send once under the route's fixed signing and answer policy."""
+        route = "/v1/webhook-endpoint"
+        return (
+            self._transport.send(_spec(self._transport.core, "GET", route, route, None), WebhookEndpoint.from_json)
+        )[0]
+
+    def set(self, request: SetWebhookEndpointRequest) -> WebhookEndpoint:
+        """Send once under the route's fixed signing and answer policy."""
+        route = "/v1/webhook-endpoint"
+        return (
+            self._transport.send(_spec(self._transport.core, "PUT", route, route, request), WebhookEndpoint.from_json)
+        )[0]
+
+    def test(self) -> WebhookEventAccepted:
+        """Send once under the route's fixed signing and answer policy."""
+        route = "/v1/webhook-endpoint/test"
+        return (
+            self._transport.send(_spec(self._transport.core, "POST", route, route, {}), WebhookEventAccepted.from_json)
+        )[0]
+
+
+class SyncWebhookEventOperations:
+    """Read delivery summaries and explicitly request another delivery of an existing event."""
+
+    def __init__(self, transport: SyncTransport) -> None:
+        self._transport = transport
+
+    def get_webhook_events_page(self, query: WebhookEventsQuery | None = None) -> Page[WebhookEvent]:
+        """Read one page without replaying purchases or verifying unsigned answers."""
+        route = "/v1/webhook-events"
+        path = _query_path("/v1/webhook-events", query.to_json() if query is not None else {})
+        return (
+            self._transport.send(_spec(self._transport.core, "GET", route, path), _page_reader(WebhookEvent.from_json))
+        )[0]
+
+    def get_webhook_events(self, query: WebhookEventsQuery | None = None) -> Iterator[WebhookEvent]:
+        """Follow every cursor while retaining filters and refusing a repeated continuation."""
+        current = query or WebhookEventsQuery()
+        seen: set[str] = {current.cursor} if current.cursor is not None else set()
+        while True:
+            page = self.get_webhook_events_page(current)
+            yield from page.items
+            cursor = _next_cursor(page.next_cursor, seen)
+            if cursor is None:
+                return
+            current = replace(current, cursor=cursor)
+
+    def redeliver(self, event_id: UUID | str) -> WebhookEventAccepted:
+        """Request redelivery once with nonce signing and no Idempotency-Key."""
+        event = _id(event_id, "event_id")
+        route = "/v1/webhook-events/{eventId}/redeliver"
+        return (
+            self._transport.send(
+                _spec(self._transport.core, "POST", route, f"/v1/webhook-events/{event}/redeliver", {}),
+                WebhookEventAccepted.from_json,
+            )
+        )[0]
+
+
+class AsyncMeterChargeOperations:
+    """Create and recover the saved purchase intent under the original operation id."""
+
+    def __init__(self, transport: AsyncTransport) -> None:
+        self._transport = transport
+
+    async def get_meter_packages_page(self, wallet_id: UUID | str, cursor: str | None = None) -> Page[MeterPackage]:
+        """Read one page without replaying purchases or verifying unsigned answers."""
+        wallet = _id(wallet_id, "wallet_id")
+        route = "/v1/wallets/{walletId}/meter-packages"
+        path = _query_path(f"/v1/wallets/{wallet}/meter-packages", {"cursor": cursor})
+        return (
+            await self._transport.send(
+                _spec(self._transport.core, "GET", route, path), _page_reader(MeterPackage.from_json)
+            )
+        )[0]
+
+    async def get_meter_packages(self, wallet_id: UUID | str) -> AsyncIterator[MeterPackage]:
+        """Follow every cursor while retaining filters and refusing a repeated continuation."""
+        cursor = None
+        seen: set[str] = set()
+        while True:
+            page = await self.get_meter_packages_page(wallet_id, cursor)
+            for item in page.items:
+                yield item
+            cursor = _next_cursor(page.next_cursor, seen)
+            if cursor is None:
+                return
+
+    async def get_meter_charges_page(
+        self, wallet_id: UUID | str, query: MeterChargesQuery | None = None
+    ) -> Page[MeterChargeSummary]:
+        """Read one page without replaying purchases or verifying unsigned answers."""
+        wallet = _id(wallet_id, "wallet_id")
+        route = "/v1/wallets/{walletId}/meter-charges"
+        path = _query_path(f"/v1/wallets/{wallet}/meter-charges", query.to_json() if query is not None else {})
+        return (
+            await self._transport.send(
+                _spec(self._transport.core, "GET", route, path), _page_reader(MeterChargeSummary.from_json)
+            )
+        )[0]
+
+    async def get_meter_charges(
+        self, wallet_id: UUID | str, query: MeterChargesQuery | None = None
+    ) -> AsyncIterator[MeterChargeSummary]:
+        """Follow every cursor while retaining filters and refusing a repeated continuation."""
+        current = query or MeterChargesQuery()
+        seen: set[str] = {current.cursor} if current.cursor is not None else set()
+        while True:
+            page = await self.get_meter_charges_page(wallet_id, current)
+            for item in page.items:
+                yield item
+            cursor = _next_cursor(page.next_cursor, seen)
+            if cursor is None:
+                return
+            current = replace(current, cursor=cursor)
+
+    async def create(
+        self, *, wallet_id: UUID | str, operation_id: UUID | str, request: CreateMeterChargeRequest
+    ) -> MeterChargeResult:
+        """Send the caller-persisted id and unchanged intent with fresh signing material."""
+        return await self._send(wallet_id, operation_id, request, False)
+
+    async def resume(
+        self, *, wallet_id: UUID | str, operation_id: UUID | str, request: CreateMeterChargeRequest
+    ) -> MeterChargeResult:
+        """Send the caller-persisted id and unchanged intent with fresh signing material."""
+        return await self._send(wallet_id, operation_id, request, True)
+
+    async def get(self, operation_id: UUID | str) -> MeterCharge | MeterChargeAccepted:
+        """Read signed state, preserving a processing acceptance before owner projection."""
+        operation = _id(operation_id, "operation_id")
+        route = "/v1/meter-charges/{operationId}"
+        data, response, _ = await self._transport.send(
+            _spec(self._transport.core, "GET", route, f"/v1/meter-charges/{operation}"), object_data
+        )
+        return read_meter_charge(data, response, operation)
+
+    async def _send(
+        self, wallet_id: UUID | str, operation_id: UUID | str, request: CreateMeterChargeRequest, resuming: bool
+    ) -> MeterChargeResult:
+        wallet, operation = _id(wallet_id, "wallet_id"), _id(operation_id, "operation_id")
+        if request is None:
+            raise TypeError("request cannot be None.")
+        route = "/v1/wallets/{walletId}/meter-charges"
+        spec = _spec(self._transport.core, "POST", route, f"/v1/wallets/{wallet}/meter-charges", request, operation)
+        try:
+            data, response, _ = await self._transport.send(spec, object_data)
+            model = read_meter_charge(data, response, operation)
+            return classify_meter_charge(model, response)
+        except AnisApiError as exc:
+            if product_refusal_is_final(exc, resuming, meter=True):
+                return MeterChargeNotPlaced(operation, exc)
+            return MeterChargeOutcomeUnknown(operation, product_refusal_delay(exc), exc)
+        except RequestSigningError:
+            raise
+        except Exception as exc:
+            return MeterChargeOutcomeUnknown(operation, timedelta(seconds=5), exc)
+
+
+class AsyncDirectRechargeOperations:
+    """Create and recover the saved purchase intent under the original operation id."""
+
+    def __init__(self, transport: AsyncTransport) -> None:
+        self._transport = transport
+
+    async def get_direct_recharges_page(
+        self, wallet_id: UUID | str, query: DirectRechargesQuery | None = None
+    ) -> Page[DirectRechargeSummary]:
+        """Read one page without replaying purchases or verifying unsigned answers."""
+        wallet = _id(wallet_id, "wallet_id")
+        route = "/v1/wallets/{walletId}/direct-recharges"
+        path = _query_path(f"/v1/wallets/{wallet}/direct-recharges", query.to_json() if query is not None else {})
+        return (
+            await self._transport.send(
+                _spec(self._transport.core, "GET", route, path), _page_reader(DirectRechargeSummary.from_json)
+            )
+        )[0]
+
+    async def get_direct_recharges(
+        self, wallet_id: UUID | str, query: DirectRechargesQuery | None = None
+    ) -> AsyncIterator[DirectRechargeSummary]:
+        """Follow every cursor while retaining filters and refusing a repeated continuation."""
+        current = query or DirectRechargesQuery()
+        seen: set[str] = {current.cursor} if current.cursor is not None else set()
+        while True:
+            page = await self.get_direct_recharges_page(wallet_id, current)
+            for item in page.items:
+                yield item
+            cursor = _next_cursor(page.next_cursor, seen)
+            if cursor is None:
+                return
+            current = replace(current, cursor=cursor)
+
+    async def create(
+        self, *, wallet_id: UUID | str, operation_id: UUID | str, request: CreateDirectRechargeRequest
+    ) -> DirectRechargeResult:
+        """Send the caller-persisted id and unchanged intent with fresh signing material."""
+        return await self._send(wallet_id, operation_id, request, False)
+
+    async def resume(
+        self, *, wallet_id: UUID | str, operation_id: UUID | str, request: CreateDirectRechargeRequest
+    ) -> DirectRechargeResult:
+        """Send the caller-persisted id and unchanged intent with fresh signing material."""
+        return await self._send(wallet_id, operation_id, request, True)
+
+    async def get(self, operation_id: UUID | str) -> DirectRecharge | DirectRechargeAccepted:
+        """Read signed state, preserving a processing acceptance before owner projection."""
+        operation = _id(operation_id, "operation_id")
+        route = "/v1/direct-recharges/{operationId}"
+        data, response, _ = await self._transport.send(
+            _spec(self._transport.core, "GET", route, f"/v1/direct-recharges/{operation}"), object_data
+        )
+        return read_direct_recharge(data, response, operation)
+
+    async def _send(
+        self, wallet_id: UUID | str, operation_id: UUID | str, request: CreateDirectRechargeRequest, resuming: bool
+    ) -> DirectRechargeResult:
+        wallet, operation = _id(wallet_id, "wallet_id"), _id(operation_id, "operation_id")
+        if request is None:
+            raise TypeError("request cannot be None.")
+        route = "/v1/wallets/{walletId}/direct-recharges"
+        spec = _spec(self._transport.core, "POST", route, f"/v1/wallets/{wallet}/direct-recharges", request, operation)
+        try:
+            data, response, _ = await self._transport.send(spec, object_data)
+            model = read_direct_recharge(data, response, operation)
+            return classify_direct_recharge(model, response)
+        except AnisApiError as exc:
+            if product_refusal_is_final(exc, resuming, meter=False):
+                return DirectRechargeNotPlaced(operation, exc)
+            return DirectRechargeOutcomeUnknown(operation, product_refusal_delay(exc), exc)
+        except RequestSigningError:
+            raise
+        except Exception as exc:
+            return DirectRechargeOutcomeUnknown(operation, timedelta(seconds=5), exc)
+
+    async def update_recipient(
+        self, operation_id: UUID | str, request: UpdateDirectRechargeRecipientRequest
+    ) -> DirectRechargeProcessing:
+        """Sign the exact recipient bytes once without a purchase key or recovery replay."""
+        operation = _id(operation_id, "operation_id")
+        route = "/v1/direct-recharges/{operationId}/recipient"
+        data, response, _ = await self._transport.send(
+            _spec(self._transport.core, "PATCH", route, f"/v1/direct-recharges/{operation}/recipient", request),
+            object_data,
+        )
+        return read_recipient_update(data, response, operation)
+
+
+class AsyncDirectRechargeProductOperations:
+    """Read wallet-priced products, dynamic recipient fields, locations and quotes."""
+
+    def __init__(self, transport: AsyncTransport) -> None:
+        self._transport = transport
+
+    async def get_direct_recharge_products_page(
+        self, wallet_id: UUID | str, query: DirectRechargeProductsQuery | None = None
+    ) -> Page[DirectRechargeProductSummary]:
+        """Read one page without replaying purchases or verifying unsigned answers."""
+        wallet = _id(wallet_id, "wallet_id")
+        route = "/v1/wallets/{walletId}/direct-recharge-products"
+        path = _query_path(
+            f"/v1/wallets/{wallet}/direct-recharge-products", query.to_json() if query is not None else {}
+        )
+        return (
+            await self._transport.send(
+                _spec(self._transport.core, "GET", route, path), _page_reader(DirectRechargeProductSummary.from_json)
+            )
+        )[0]
+
+    async def get_direct_recharge_products(
+        self, wallet_id: UUID | str, query: DirectRechargeProductsQuery | None = None
+    ) -> AsyncIterator[DirectRechargeProductSummary]:
+        """Follow every cursor while retaining filters and refusing a repeated continuation."""
+        current = query or DirectRechargeProductsQuery()
+        seen: set[str] = {current.cursor} if current.cursor is not None else set()
+        while True:
+            page = await self.get_direct_recharge_products_page(wallet_id, current)
+            for item in page.items:
+                yield item
+            cursor = _next_cursor(page.next_cursor, seen)
+            if cursor is None:
+                return
+            current = replace(current, cursor=cursor)
+
+    async def get(self, wallet_id: UUID | str, product_id: UUID | str) -> DirectRechargeProduct:
+        """Read the dynamic fields for this wallet's selected product."""
+        wallet, product = _id(wallet_id, "wallet_id"), _id(product_id, "product_id")
+        route = "/v1/wallets/{walletId}/direct-recharge-products/{productId}"
+        return (
+            await self._transport.send(
+                _spec(self._transport.core, "GET", route, f"/v1/wallets/{wallet}/direct-recharge-products/{product}"),
+                DirectRechargeProduct.from_json,
+            )
+        )[0]
+
+    async def get_direct_recharge_product_locations_page(
+        self, wallet_id: UUID | str, product_id: UUID | str, query: DirectRechargeLocationsQuery | None = None
+    ) -> Page[DirectRechargeLocation]:
+        """Read one page without replaying purchases or verifying unsigned answers."""
+        wallet = _id(wallet_id, "wallet_id")
+        product = _id(product_id, "product_id")
+        route = "/v1/wallets/{walletId}/direct-recharge-products/{productId}/locations"
+        path = _query_path(
+            f"/v1/wallets/{wallet}/direct-recharge-products/{product}/locations",
+            query.to_json() if query is not None else {},
+        )
+        return (
+            await self._transport.send(
+                _spec(self._transport.core, "GET", route, path), _page_reader(DirectRechargeLocation.from_json)
+            )
+        )[0]
+
+    async def get_direct_recharge_product_locations(
+        self, wallet_id: UUID | str, product_id: UUID | str, query: DirectRechargeLocationsQuery | None = None
+    ) -> AsyncIterator[DirectRechargeLocation]:
+        """Follow every cursor while retaining filters and refusing a repeated continuation."""
+        current = query or DirectRechargeLocationsQuery()
+        seen: set[str] = {current.cursor} if current.cursor is not None else set()
+        while True:
+            page = await self.get_direct_recharge_product_locations_page(wallet_id, product_id, current)
+            for item in page.items:
+                yield item
+            cursor = _next_cursor(page.next_cursor, seen)
+            if cursor is None:
+                return
+            current = replace(current, cursor=cursor)
+
+    async def quote(
+        self, wallet_id: UUID | str, product_id: UUID | str, amount: str, amount_in: DirectRechargeAmountIn
+    ) -> DirectRechargeQuote:
+        """Quote exact decimal text in LYD or the product's payout currency."""
+        wallet, product = _id(wallet_id, "wallet_id"), _id(product_id, "product_id")
+        if amount_in not in {DirectRechargeAmountIn.LYD, DirectRechargeAmountIn.FX}:
+            raise ValueError("amount_in must be lyd or fx.")
+        if not isinstance(amount, str):
+            raise TypeError("amount must be decimal text.")
+        route = "/v1/wallets/{walletId}/direct-recharge-products/{productId}/quote"
+        path = _query_path(
+            f"/v1/wallets/{wallet}/direct-recharge-products/{product}/quote", {"amount": amount, "amountIn": amount_in}
+        )
+        return (
+            await self._transport.send(_spec(self._transport.core, "GET", route, path), DirectRechargeQuote.from_json)
+        )[0]
+
+
+class AsyncWebhookEndpointOperations:
+    """Manage the admitted application endpoint without a product scope or purchase recovery."""
+
+    def __init__(self, transport: AsyncTransport) -> None:
+        self._transport = transport
+
+    async def get(self) -> WebhookEndpoint:
+        """Send once under the route's fixed signing and answer policy."""
+        route = "/v1/webhook-endpoint"
+        return (
+            await self._transport.send(
+                _spec(self._transport.core, "GET", route, route, None), WebhookEndpoint.from_json
+            )
+        )[0]
+
+    async def set(self, request: SetWebhookEndpointRequest) -> WebhookEndpoint:
+        """Send once under the route's fixed signing and answer policy."""
+        route = "/v1/webhook-endpoint"
+        return (
+            await self._transport.send(
+                _spec(self._transport.core, "PUT", route, route, request), WebhookEndpoint.from_json
+            )
+        )[0]
+
+    async def test(self) -> WebhookEventAccepted:
+        """Send once under the route's fixed signing and answer policy."""
+        route = "/v1/webhook-endpoint/test"
+        return (
+            await self._transport.send(
+                _spec(self._transport.core, "POST", route, route, {}), WebhookEventAccepted.from_json
+            )
+        )[0]
+
+
+class AsyncWebhookEventOperations:
+    """Read delivery summaries and explicitly request another delivery of an existing event."""
+
+    def __init__(self, transport: AsyncTransport) -> None:
+        self._transport = transport
+
+    async def get_webhook_events_page(self, query: WebhookEventsQuery | None = None) -> Page[WebhookEvent]:
+        """Read one page without replaying purchases or verifying unsigned answers."""
+        route = "/v1/webhook-events"
+        path = _query_path("/v1/webhook-events", query.to_json() if query is not None else {})
+        return (
+            await self._transport.send(
+                _spec(self._transport.core, "GET", route, path), _page_reader(WebhookEvent.from_json)
+            )
+        )[0]
+
+    async def get_webhook_events(self, query: WebhookEventsQuery | None = None) -> AsyncIterator[WebhookEvent]:
+        """Follow every cursor while retaining filters and refusing a repeated continuation."""
+        current = query or WebhookEventsQuery()
+        seen: set[str] = {current.cursor} if current.cursor is not None else set()
+        while True:
+            page = await self.get_webhook_events_page(current)
+            for item in page.items:
+                yield item
+            cursor = _next_cursor(page.next_cursor, seen)
+            if cursor is None:
+                return
+            current = replace(current, cursor=cursor)
+
+    async def redeliver(self, event_id: UUID | str) -> WebhookEventAccepted:
+        """Request redelivery once with nonce signing and no Idempotency-Key."""
+        event = _id(event_id, "event_id")
+        route = "/v1/webhook-events/{eventId}/redeliver"
+        return (
+            await self._transport.send(
+                _spec(self._transport.core, "POST", route, f"/v1/webhook-events/{event}/redeliver", {}),
+                WebhookEventAccepted.from_json,
+            )
+        )[0]

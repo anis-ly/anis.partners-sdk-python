@@ -1,0 +1,627 @@
+{
+  "profile": "anis-partner-webhook-v1",
+  "algorithm": "ecdsa-p256-sha256",
+  "label": "sig1",
+  "generatedFrom": "anis.partners-webhooks Anis.Partners.Webhooks.Grpc.Signing.WebhookSigner / WebhookSignatureBase; source-tree sha256 e20d0397574b9213909a28f328d2da76ec5c3d1e85ac6ba958197e0f9905efe3",
+  "productionSource": {
+    "path": "src/Anis.Partners.Webhooks.Grpc/Signing",
+    "algorithm": "sha256-file-list-v1",
+    "sha256": "e20d0397574b9213909a28f328d2da76ec5c3d1e85ac6ba958197e0f9905efe3",
+    "files": {
+      "IPartnerSigningKeys.cs": "2dc0bb4adaaa20f85de7437e350993ea839c21a1a1dfeea92a0b1a70ab3e74fb",
+      "KeyVaultPartnerSigningKeys.cs": "5c31d8bdf2bb25553410a99c8136228bc018ac78665fd891a9d97178b8b28cdb",
+      "PartnerJwkCoordinate.cs": "17dfcee71fc8b27e5af520232117d0fbf8bf219929421df8cc1b8d985bde0140",
+      "PartnerSigningKey.cs": "a63f719d8370152177a33437fe282f3d03902e67e6b5d1d676e073e683fcbdee",
+      "PartnerSigningKeyStatus.cs": "e216964877bf11b4dd7cf793d027e26ae53911a8a3e1e0054cb423c7fb356082",
+      "WebhookSignatureBase.cs": "9b30d847a2f9f2bfe77e503d6b9c604686b224c590072f649b0fc16d1d0de796",
+      "WebhookSigner.cs": "b2cc88814cd73b20d314c9266827f3147881803d045c7e8c287100dfa1f65091"
+    }
+  },
+  "skewSeconds": 300,
+  "lifetimeSeconds": 300,
+  "total": 75,
+  "accept": 20,
+  "reject": 55,
+  "vectors": [
+    {
+      "id": "WH-000-published-vector",
+      "title": "Published scalar-one signing vector",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "accept",
+      "reason": null,
+      "phase": "verify"
+    },
+    {
+      "id": "WH-001-good",
+      "title": "Accepted delivery with active webhook key",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "accept",
+      "reason": null,
+      "phase": "verify"
+    },
+    {
+      "id": "WH-002-next-key",
+      "title": "Next key after activation",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "accept",
+      "reason": null,
+      "phase": "verify"
+    },
+    {
+      "id": "WH-003-body-byte-changed",
+      "title": "Raw body byte changed without updating digest",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "reject",
+      "reason": "content_digest_mismatch",
+      "phase": "verify"
+    },
+    {
+      "id": "WH-004-digest-changed",
+      "title": "Digest header names another body",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "reject",
+      "reason": "content_digest_mismatch",
+      "phase": "verify"
+    },
+    {
+      "id": "WH-005-wrong-tag",
+      "title": "Valid signature with wrong tag",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "reject",
+      "reason": "profile_unexpected",
+      "phase": "verify"
+    },
+    {
+      "id": "WH-006-missing-tag",
+      "title": "Valid signature without tag",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "reject",
+      "reason": "profile_unexpected",
+      "phase": "verify"
+    },
+    {
+      "id": "WH-007-reduced-coverage",
+      "title": "Valid signature over a reduced covered list",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "reject",
+      "reason": "covered_components_mismatch",
+      "phase": "verify"
+    },
+    {
+      "id": "WH-007-reordered-coverage",
+      "title": "Valid signature over reordered components",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "reject",
+      "reason": "covered_components_mismatch",
+      "phase": "verify"
+    },
+    {
+      "id": "WH-008-expired-by-one",
+      "title": "Expiry precedes skew: now is expires plus one",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "reject",
+      "reason": "signature_expired",
+      "phase": "verify"
+    },
+    {
+      "id": "WH-009-created-future",
+      "title": "Created is now plus 301",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "reject",
+      "reason": "created_out_of_window",
+      "phase": "verify"
+    },
+    {
+      "id": "WH-010-application-swap",
+      "title": "Valid signature for another application than the configured receiver",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "reject",
+      "reason": "application_id_mismatch",
+      "phase": "verify"
+    },
+    {
+      "id": "WH-011-url-swap",
+      "title": "Valid signature for a different URL",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "reject",
+      "reason": "target_uri_mismatch",
+      "phase": "verify"
+    },
+    {
+      "id": "WH-012-retired-key",
+      "title": "Retired key is refused even though created precedes retiredAt",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "reject",
+      "reason": "key_retired",
+      "phase": "verify"
+    },
+    {
+      "id": "WH-013-compromised-key",
+      "title": "Revoked exact kid is refused even before compromisedAt",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "reject",
+      "reason": "key_compromised",
+      "phase": "verify"
+    },
+    {
+      "id": "WH-014-answer-purpose",
+      "title": "Answer key cannot authenticate a webhook",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "reject",
+      "reason": "key_purpose_mismatch",
+      "phase": "verify"
+    },
+    {
+      "id": "WH-015-missing-purpose",
+      "title": "Missing purpose cannot authenticate a webhook",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "reject",
+      "reason": "key_purpose_mismatch",
+      "phase": "verify"
+    },
+    {
+      "id": "WH-016-attempt-tampered",
+      "title": "Attempt changed from one to two without signing",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "reject",
+      "reason": "signature_invalid",
+      "phase": "verify"
+    },
+    {
+      "id": "WH-017-missing-signature",
+      "title": "Signature absent",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "reject",
+      "reason": "signature_missing",
+      "phase": "verify"
+    },
+    {
+      "id": "WH-018-missing-signature-input",
+      "title": "Signature-Input absent",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "reject",
+      "reason": "signature_missing",
+      "phase": "verify"
+    },
+    {
+      "id": "WH-019-missing-event-id",
+      "title": "Required webhook-id absent",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "reject",
+      "reason": "covered_components_mismatch",
+      "phase": "verify"
+    },
+    {
+      "id": "WH-020-missing-attempt",
+      "title": "Required attempt absent",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "reject",
+      "reason": "covered_components_mismatch",
+      "phase": "verify"
+    },
+    {
+      "id": "WH-021-missing-application",
+      "title": "Required application header absent",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "reject",
+      "reason": "covered_components_mismatch",
+      "phase": "verify"
+    },
+    {
+      "id": "WH-022-missing-digest",
+      "title": "Content-Digest absent",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "reject",
+      "reason": "content_digest_mismatch",
+      "phase": "verify"
+    },
+    {
+      "id": "WH-023-missing-expires",
+      "title": "Valid signature without expires",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "reject",
+      "reason": "validity_window_invalid",
+      "phase": "verify"
+    },
+    {
+      "id": "WH-023-wrong-lifetime",
+      "title": "Valid signature with 301 second lifetime",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "reject",
+      "reason": "validity_window_invalid",
+      "phase": "verify"
+    },
+    {
+      "id": "WH-024-signature-flipped",
+      "title": "One signature bit flipped",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "reject",
+      "reason": "signature_invalid",
+      "phase": "verify"
+    },
+    {
+      "id": "WH-025-signature-der",
+      "title": "Same mathematical signature in refused DER encoding",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "reject",
+      "reason": "signature_malformed",
+      "phase": "verify"
+    },
+    {
+      "id": "WH-025-signature-truncated",
+      "title": "Signature truncated to 32 bytes",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "reject",
+      "reason": "signature_malformed",
+      "phase": "verify"
+    },
+    {
+      "id": "WH-026-wrong-algorithm",
+      "title": "Valid signature declaring another algorithm",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "reject",
+      "reason": "algorithm_not_supported",
+      "phase": "verify"
+    },
+    {
+      "id": "WH-027-wrong-label",
+      "title": "Valid signature using another label",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "reject",
+      "reason": "label_unexpected",
+      "phase": "verify"
+    },
+    {
+      "id": "WH-028-unknown-key",
+      "title": "Valid signature names an unpublished exact kid",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "reject",
+      "reason": "unknown_key",
+      "phase": "verify"
+    },
+    {
+      "id": "WH-029-before-not-before",
+      "title": "Created precedes key activation by one second",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "reject",
+      "reason": "key_not_yet_valid",
+      "phase": "verify"
+    },
+    {
+      "id": "WH-030-bad-coordinates",
+      "title": "Published coordinate is not 32 bytes",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "reject",
+      "reason": "key_rejected",
+      "phase": "verify"
+    },
+    {
+      "id": "WH-030-private-member",
+      "title": "Published document leaks a private member",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "reject",
+      "reason": "key_rejected",
+      "phase": "verify"
+    },
+    {
+      "id": "WH-031-envelope-event-id",
+      "title": "Signed envelope id differs from webhook-id",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "reject",
+      "reason": "event_id_mismatch",
+      "phase": "parse"
+    },
+    {
+      "id": "WH-032-envelope-application",
+      "title": "Signed envelope application differs from verified header",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "reject",
+      "reason": "application_id_mismatch",
+      "phase": "parse"
+    },
+    {
+      "id": "WH-033-envelope-invalid",
+      "title": "Cryptographically valid body is not a valid envelope",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "reject",
+      "reason": "envelope_invalid",
+      "phase": "parse"
+    },
+    {
+      "id": "WH-034-unknown-event-type",
+      "title": "Unknown future event type and exact raw object data survive",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "accept",
+      "reason": null,
+      "phase": "verify"
+    },
+    {
+      "id": "WH-035-expiry-boundary",
+      "title": "Now equals created plus 300 and expires",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "accept",
+      "reason": null,
+      "phase": "verify"
+    },
+    {
+      "id": "WH-036-future-boundary",
+      "title": "Created equals now plus 300",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "accept",
+      "reason": null,
+      "phase": "verify"
+    },
+    {
+      "id": "WH-037-not-before-boundary",
+      "title": "Created equals notBefore",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "accept",
+      "reason": null,
+      "phase": "verify"
+    },
+    {
+      "id": "WH-038-query-target",
+      "title": "Target query bytes, order, escaping and repeated keys are preserved",
+      "route": "POST https://pos.example.ly/hooks/anis?b=%2F\u0026a=one\u002Btwo\u0026a=%2f\u0026empty=",
+      "outcome": "accept",
+      "reason": null,
+      "phase": "verify"
+    },
+    {
+      "id": "WH-039-mixed-header-casing",
+      "title": "Header lookup ignores casing",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "accept",
+      "reason": null,
+      "phase": "verify"
+    },
+    {
+      "id": "WH-040-fixture-circle-completed",
+      "title": "Exact published envelope: circle-completed",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "accept",
+      "reason": null,
+      "phase": "verify"
+    },
+    {
+      "id": "WH-041-fixture-circle-paid",
+      "title": "Exact published envelope: circle-paid",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "accept",
+      "reason": null,
+      "phase": "verify"
+    },
+    {
+      "id": "WH-042-fixture-circle-partially-refunded",
+      "title": "Exact published envelope: circle-partially-refunded",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "accept",
+      "reason": null,
+      "phase": "verify"
+    },
+    {
+      "id": "WH-043-fixture-circle-payment-failed",
+      "title": "Exact published envelope: circle-payment-failed",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "accept",
+      "reason": null,
+      "phase": "verify"
+    },
+    {
+      "id": "WH-044-fixture-circle-rejected",
+      "title": "Exact published envelope: circle-rejected",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "accept",
+      "reason": null,
+      "phase": "verify"
+    },
+    {
+      "id": "WH-045-fixture-circle-suspended",
+      "title": "Exact published envelope: circle-suspended",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "accept",
+      "reason": null,
+      "phase": "verify"
+    },
+    {
+      "id": "WH-046-fixture-circle-suspended-after-recipient-fix",
+      "title": "Exact published envelope: circle-suspended-after-recipient-fix",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "accept",
+      "reason": null,
+      "phase": "verify"
+    },
+    {
+      "id": "WH-047-fixture-meter-failed-not-charged",
+      "title": "Exact published envelope: meter-failed-not-charged",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "accept",
+      "reason": null,
+      "phase": "verify"
+    },
+    {
+      "id": "WH-048-fixture-meter-failed-refunded",
+      "title": "Exact published envelope: meter-failed-refunded",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "accept",
+      "reason": null,
+      "phase": "verify"
+    },
+    {
+      "id": "WH-049-fixture-meter-succeeded",
+      "title": "Exact published envelope: meter-succeeded",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "accept",
+      "reason": null,
+      "phase": "verify"
+    },
+    {
+      "id": "WH-050-method-unexpected",
+      "title": "Valid signature over an actual method other than POST",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "reject",
+      "reason": "method_unexpected",
+      "phase": "verify"
+    },
+    {
+      "id": "WH-051-attempt-zero",
+      "title": "Attempt zero is not a positive integer",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "reject",
+      "reason": "covered_components_mismatch",
+      "phase": "verify"
+    },
+    {
+      "id": "WH-052-attempt-invalid",
+      "title": "Attempt is not an integer",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "reject",
+      "reason": "covered_components_mismatch",
+      "phase": "verify"
+    },
+    {
+      "id": "WH-053-duplicate-signature-header",
+      "title": "Duplicate Signature headers are refused",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "reject",
+      "reason": "signature_malformed",
+      "phase": "verify"
+    },
+    {
+      "id": "WH-054-duplicate-input-header",
+      "title": "Duplicate Signature-Input headers are refused",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "reject",
+      "reason": "signature_malformed",
+      "phase": "verify"
+    },
+    {
+      "id": "WH-055-duplicate-signature-label",
+      "title": "Duplicate sig1 signature labels are refused",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "reject",
+      "reason": "signature_malformed",
+      "phase": "verify"
+    },
+    {
+      "id": "WH-056-duplicate-input-label",
+      "title": "Duplicate sig1 input labels are refused",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "reject",
+      "reason": "signature_malformed",
+      "phase": "verify"
+    },
+    {
+      "id": "WH-057-duplicate-created",
+      "title": "Duplicate created parameter is malformed",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "reject",
+      "reason": "signature_malformed",
+      "phase": "verify"
+    },
+    {
+      "id": "WH-058-missing-created",
+      "title": "Missing created parameter is malformed",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "reject",
+      "reason": "signature_malformed",
+      "phase": "verify"
+    },
+    {
+      "id": "WH-059-attempt-negative",
+      "title": "Negative attempt is not a positive integer",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "reject",
+      "reason": "covered_components_mismatch",
+      "phase": "verify"
+    },
+    {
+      "id": "WH-060-envelope-missing-time",
+      "title": "Signed envelope timestamp: missing-time",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "reject",
+      "reason": "envelope_invalid",
+      "phase": "parse"
+    },
+    {
+      "id": "WH-061-not-before-missing-time",
+      "title": "Key activation timestamp: missing-time",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "reject",
+      "reason": "key_rejected",
+      "phase": "verify"
+    },
+    {
+      "id": "WH-062-retired-at-missing-time",
+      "title": "Retired key timestamp: missing-time",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "reject",
+      "reason": "key_rejected",
+      "phase": "verify"
+    },
+    {
+      "id": "WH-063-envelope-missing-seconds",
+      "title": "Signed envelope timestamp: missing-seconds",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "reject",
+      "reason": "envelope_invalid",
+      "phase": "parse"
+    },
+    {
+      "id": "WH-064-not-before-missing-seconds",
+      "title": "Key activation timestamp: missing-seconds",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "reject",
+      "reason": "key_rejected",
+      "phase": "verify"
+    },
+    {
+      "id": "WH-065-retired-at-missing-seconds",
+      "title": "Retired key timestamp: missing-seconds",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "reject",
+      "reason": "key_rejected",
+      "phase": "verify"
+    },
+    {
+      "id": "WH-066-envelope-missing-offset",
+      "title": "Signed envelope timestamp: missing-offset",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "reject",
+      "reason": "envelope_invalid",
+      "phase": "parse"
+    },
+    {
+      "id": "WH-067-not-before-missing-offset",
+      "title": "Key activation timestamp: missing-offset",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "reject",
+      "reason": "key_rejected",
+      "phase": "verify"
+    },
+    {
+      "id": "WH-068-retired-at-missing-offset",
+      "title": "Retired key timestamp: missing-offset",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "reject",
+      "reason": "key_rejected",
+      "phase": "verify"
+    },
+    {
+      "id": "WH-069-not-before-one-tick",
+      "title": "Created precedes activation by one 100 ns tick",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "reject",
+      "reason": "key_not_yet_valid",
+      "phase": "verify"
+    },
+    {
+      "id": "WH-070-timestamp-offset-precision",
+      "title": "Seven-digit fraction and explicit offset remain valid",
+      "route": "POST https://pos.example.ly/hooks/anis",
+      "outcome": "accept",
+      "reason": null,
+      "phase": "verify"
+    }
+  ]
+}

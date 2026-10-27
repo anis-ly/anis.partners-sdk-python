@@ -33,6 +33,7 @@ from anis_partners.verification.signing_key_source import AsyncSigningKeySource,
 from anis_partners.verification.verifiable_response import VerifiableResponse
 
 _LABEL: Final = "sig1"
+_ANSWER_PURPOSE: Final = "answer"
 
 
 def _header(response: VerifiableResponse, name: str) -> str | None:
@@ -138,6 +139,9 @@ def _with_keys_phase(context: _PreKeyContext, keys: SigningKeySet, key: Publishe
         return Failure.KEY_REJECTED
     if key is None:
         return Failure.UNKNOWN_KEY
+    if key.purpose is not None and key.purpose != _ANSWER_PURPOSE:
+        # A key published for another purpose (for example webhook) must never vouch for an API answer.
+        return Failure.KEY_REJECTED
     if key.status not in {"active", "next", "retired"}:
         return Failure.KEY_REJECTED
     not_before = _lifecycle_timestamp(key.not_before)

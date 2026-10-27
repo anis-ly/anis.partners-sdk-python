@@ -26,9 +26,22 @@ from anis_partners import (
     AnisPartnersClient,
     AnisPartnersError,
     ClientOptions,
+    CreateDirectRechargeRequest,
+    CreateMeterChargeRequest,
     CreateOrderRequest,
+    DirectRechargeAmountIn,
+    DirectRechargeFinal,
+    DirectRechargeNotPlaced,
+    DirectRechargeOutcomeUnknown,
+    DirectRechargeProcessing,
+    DirectRechargeRecipientInput,
+    DirectRechargesQuery,
     EnrollmentKeyRequest,
     HttpSigningKeySource,
+    MeterChargeFinal,
+    MeterChargeNotPlaced,
+    MeterChargeOutcomeUnknown,
+    MeterChargeProcessing,
     Money,
     OrderCompleted,
     OrderNotPlaced,
@@ -38,7 +51,11 @@ from anis_partners import (
     OrderStatus,
     PemP256Signer,
     RequestSigner,
+    SetWebhookEndpointRequest,
     UnverifiableResponseError,
+    UpdateDirectRechargeRecipientRequest,
+    WebhookDeliveryStatus,
+    WebhookEventsQuery,
 )
 
 
@@ -95,6 +112,54 @@ def _parser() -> argparse.ArgumentParser:
     order.add_argument("--use-allowed-debt", action="store_true")
     add("resume", "resume a saved order with its same id and body", ("operation_id", UUID))
     add("order-status", "read an order state", ("operation_id", UUID))
+    add("meter-packages", "list every meter package for a wallet", ("wallet_id", UUID))
+    add("meter-charges", "list every meter charge for a wallet", ("wallet_id", UUID))
+    meter = add(
+        "meter-charge",
+        "record a meter charge intent, then place it",
+        ("wallet_id", UUID),
+        ("package_id", UUID),
+        ("meter_number", None),
+        ("expected_total", _decimal_argument),
+        ("--operation", UUID),
+        ("--reference", None),
+    )
+    meter.add_argument("--currency", default="LYD")
+    add("meter-resume", "resume a saved meter charge with its same id and body", ("operation_id", UUID))
+    add("meter-status", "read a meter charge", ("operation_id", UUID))
+    add("direct-products", "list every direct recharge product for a wallet", ("wallet_id", UUID))
+    add("direct-recharges", "list every direct recharge for a wallet", ("wallet_id", UUID))
+    quote = add(
+        "direct-quote",
+        "quote a direct recharge",
+        ("wallet_id", UUID),
+        ("product_id", UUID),
+        ("amount", None),
+    )
+    quote.add_argument("--amount-in", choices=("lyd", "fx"), default="lyd")
+    direct = add(
+        "direct-recharge",
+        "record a direct recharge intent, then place it",
+        ("wallet_id", UUID),
+        ("product_id", UUID),
+        ("payout_amount", None),
+        ("expected_total", _decimal_argument),
+        ("--operation", UUID),
+        ("--reference", None),
+        ("--note", None),
+    )
+    direct.add_argument("--currency", default="LYD")
+    direct.add_argument("--recipient", action="append", default=[], type=_recipient_argument, metavar="key=value")
+    add("direct-resume", "resume a saved direct recharge with its same id and body", ("operation_id", UUID))
+    add("direct-status", "read a direct recharge", ("operation_id", UUID))
+    fix = add("direct-fix-recipient", "correct a paused direct recharge", ("operation_id", UUID))
+    fix.add_argument("--recipient", action="append", required=True, type=_recipient_argument, metavar="key=value")
+    endpoint = add("webhook-endpoint", "read or set the webhook endpoint")
+    endpoint.add_argument("--url", metavar="https://...")
+    add("webhook-test", "ask Anis to send a test notification")
+    events = add("webhook-events", "list every notification delivery")
+    events.add_argument("--status", choices=[item.value for item in WebhookDeliveryStatus if item.value != "unknown"])
+    add("webhook-redeliver", "ask Anis to deliver a notification again", ("event_id", UUID))
     add("owned", "list masked owned cards", ("wallet_id", UUID))
     add("owned-card", "read one masked owned card", ("wallet_id", UUID), ("sold_card_id", UUID))
     add("reveal", "explicitly reveal one card code", ("wallet_id", UUID), ("sold_card_id", UUID))
@@ -145,17 +210,22 @@ def _safe_value(value: object, show_secrets: bool = False) -> object:
     if is_dataclass(value) and not isinstance(value, type):
         return _safe_value(asdict(cast(Any, value)), show_secrets)
     if isinstance(value, dict):
-        return {
-            key: _mask_secret(str(item))
-            if key.casefold() in {"voucher", "serial_number", "serialnumber"} and not show_secrets
-            else _safe_value(item, show_secrets)
-            for key, item in value.items()
-        }
+        return {key: _mask_value(key, item, show_secrets) for key, item in value.items()}
     if isinstance(value, (list, tuple)):
         return [_safe_value(item, show_secrets) for item in value]
     if isinstance(value, (UUID, datetime, Decimal, timedelta)):
         return str(value)
     return value
+
+
+def _mask_value(key: str, item: object, show_secrets: bool) -> object:
+    """Hide card codes, meter tokens and recipient details unless the operator asks to see them."""
+    name = key.casefold()
+    if name in {"voucher", "serial_number", "serialnumber"} and not show_secrets:
+        return _mask_secret(str(item))
+    if name in {"tokens", "recipient"} and not show_secrets and isinstance(item, (list, tuple)):
+        return f"[{len(item)} hidden; use --show-secrets]"
+    return _safe_value(item, show_secrets)
 
 
 def _show(value: object, output: TextIO, *, show_secrets: bool = False) -> None:
@@ -173,6 +243,14 @@ def _decimal_argument(value: str) -> Decimal:
         return Decimal(value)
     except Exception:
         raise argparse.ArgumentTypeError("expected a decimal price") from None
+
+
+def _recipient_argument(value: str) -> DirectRechargeRecipientInput:
+    """Read one recipient field as key=value without echoing the value on a mistake."""
+    key, separator, text = value.partition("=")
+    if not separator or not key:
+        raise argparse.ArgumentTypeError("expected key=value")
+    return DirectRechargeRecipientInput(key, text)
 
 
 def _refusal_line(error: AnisPartnersError, *, order: bool = False) -> str:
@@ -249,10 +327,17 @@ def _journal_path(settings: dict[str, object], operation_id: UUID) -> Path:
     return folder / f"{operation_id}.json"
 
 
-def _record_intent(path: Path, wallet_id: UUID, request: CreateOrderRequest) -> None:
+def _record_intent(
+    path: Path,
+    wallet_id: UUID,
+    request: CreateOrderRequest | CreateMeterChargeRequest | CreateDirectRechargeRequest,
+    kind: str = "order",
+) -> None:
     if path.exists():
-        raise ValueError(f"Intent {path.stem} already exists; resume that order instead of placing it again.")
-    document = {"wallet_id": str(wallet_id), "operation_id": path.stem, "request": request.to_json()}
+        raise ValueError(f"Intent {path.stem} already exists; resume that operation instead of placing it again.")
+    document: dict[str, object] = {"wallet_id": str(wallet_id), "operation_id": path.stem, "request": request.to_json()}
+    if kind != "order":
+        document["kind"] = kind
     descriptor, temporary = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
     try:
         os.fchmod(descriptor, 0o600)
@@ -297,6 +382,171 @@ def _record_result(path: Path, result: object) -> None:
             record["outcome"] = "unknown"
             record["cause_type"] = type(result.cause).__name__
     _atomic_private_json(path, record)
+
+
+_PRODUCT_OUTCOMES: dict[type, tuple[str, str]] = {
+    MeterChargeFinal: ("final", "FINAL"),
+    DirectRechargeFinal: ("final", "FINAL"),
+    MeterChargeProcessing: ("processing", "PROCESSING"),
+    DirectRechargeProcessing: ("processing", "PROCESSING"),
+    MeterChargeNotPlaced: ("not-placed", "NOT PLACED"),
+    DirectRechargeNotPlaced: ("not-placed", "NOT PLACED"),
+    MeterChargeOutcomeUnknown: ("unknown", "UNKNOWN"),
+    DirectRechargeOutcomeUnknown: ("unknown", "UNKNOWN"),
+}
+
+
+def _show_product_outcome(result: object, operation_id: UUID, resume: str, output: TextIO) -> None:
+    """Print the recovery state so a partner can act without interpreting a JSON dump."""
+    label = _PRODUCT_OUTCOMES[type(result)][1]
+    if isinstance(result, (MeterChargeNotPlaced, DirectRechargeNotPlaced)):
+        print(_refusal_line(result.refusal, order=True), file=output)
+    elif isinstance(result, (MeterChargeProcessing, DirectRechargeProcessing)):
+        wait = int(result.retry_after.total_seconds())
+        print(f"{label} operation {operation_id}; {resume} {operation_id} after {wait} s", file=output)
+    elif isinstance(result, (MeterChargeOutcomeUnknown, DirectRechargeOutcomeUnknown)):
+        print(
+            f"{label} operation {operation_id}; {resume} {operation_id} after "
+            f"{int(result.suggested_delay.total_seconds())} s with the same id",
+            file=output,
+        )
+    else:
+        print(f"{label} operation {operation_id}", file=output)
+
+
+def _record_product_result(path: Path, result: object) -> None:
+    """Save only the outcome name; receipts and recipient details stay out of the journal."""
+    record = json.loads(path.read_text(encoding="utf-8"))
+    record["outcome"] = _PRODUCT_OUTCOMES[type(result)][0]
+    _atomic_private_json(path, record)
+
+
+_PRODUCT_COMMANDS = frozenset(
+    {
+        "meter-packages",
+        "meter-charges",
+        "meter-charge",
+        "meter-resume",
+        "meter-status",
+        "direct-products",
+        "direct-recharges",
+        "direct-quote",
+        "direct-recharge",
+        "direct-resume",
+        "direct-status",
+        "direct-fix-recipient",
+        "webhook-endpoint",
+        "webhook-test",
+        "webhook-events",
+        "webhook-redeliver",
+    }
+)
+
+
+def _run_product_command(
+    anis: AnisPartnersClient, args: argparse.Namespace, settings: dict[str, object], output: TextIO
+) -> int | None:
+    """Run the meter, direct recharge and webhook commands; creates persist their intent first."""
+    command = args.command
+    if command == "meter-packages":
+        _show(list(anis.meter_charges.get_meter_packages(args.wallet_id)), output)
+    elif command == "meter-charges":
+        _show(list(anis.meter_charges.get_meter_charges(args.wallet_id)), output)
+    elif command == "meter-status":
+        _show(anis.meter_charges.get(args.operation_id), output, show_secrets=args.show_secrets)
+    elif command in {"meter-charge", "direct-recharge"}:
+        operation_id = args.operation or uuid4()
+        total = Money(args.expected_total, args.currency)
+        path: Path | None = None
+        if command == "meter-charge":
+            request: CreateMeterChargeRequest | CreateDirectRechargeRequest = CreateMeterChargeRequest(
+                args.package_id, args.meter_number, total, args.reference
+            )
+        else:
+            request = CreateDirectRechargeRequest(
+                args.product_id, args.payout_amount, total, tuple(args.recipient), args.note, args.reference
+            )
+        kind = "meter" if command == "meter-charge" else "direct"
+        if not args.dry_run:
+            path = _journal_path(settings, operation_id)
+            _record_intent(path, args.wallet_id, request, kind)  # durable intent precedes the create request
+            print(f"Intent recorded at {path}; operation id {operation_id}", file=output)
+        return _create_product(anis, args.wallet_id, operation_id, request, path, False, output)
+    elif command in {"meter-resume", "direct-resume"}:
+        path = _journal_path(settings, args.operation_id)
+        saved = json.loads(path.read_text(encoding="utf-8"))
+        operation_id = UUID(saved["operation_id"])
+        if operation_id != args.operation_id:
+            raise ValueError("The journal operation id does not match the requested resume id.")
+        if command == "meter-resume":
+            request = CreateMeterChargeRequest.from_json(saved["request"])
+        else:
+            request = CreateDirectRechargeRequest.from_json(saved["request"])
+        return _create_product(anis, UUID(saved["wallet_id"]), operation_id, request, path, True, output)
+    elif command == "direct-products":
+        _show(list(anis.direct_recharge_products.get_direct_recharge_products(args.wallet_id)), output)
+    elif command == "direct-recharges":
+        _show(list(anis.direct_recharges.get_direct_recharges(args.wallet_id, DirectRechargesQuery())), output)
+    elif command == "direct-quote":
+        _show(
+            anis.direct_recharge_products.quote(
+                wallet_id=args.wallet_id,
+                product_id=args.product_id,
+                amount=args.amount,
+                amount_in=DirectRechargeAmountIn(args.amount_in),
+            ),
+            output,
+        )
+    elif command == "direct-status":
+        _show(anis.direct_recharges.get(args.operation_id), output, show_secrets=args.show_secrets)
+    elif command == "direct-fix-recipient":
+        acknowledgement = anis.direct_recharges.update_recipient(
+            args.operation_id, UpdateDirectRechargeRecipientRequest(tuple(args.recipient))
+        )
+        _show(acknowledgement.recharge.to_json(), output)
+        print(
+            f"ACCEPTED recipient correction; direct-status {acknowledgement.operation_id}; "
+            f"Location={acknowledgement.location}",
+            file=output,
+        )
+    elif command == "webhook-endpoint":
+        if args.url:
+            _show(anis.webhook_endpoint.set(SetWebhookEndpointRequest(args.url)), output)
+        else:
+            _show(anis.webhook_endpoint.get(), output)
+    elif command == "webhook-test":
+        _show(anis.webhook_endpoint.test(), output)
+    elif command == "webhook-events":
+        query = WebhookEventsQuery(status=WebhookDeliveryStatus(args.status)) if args.status else None
+        _show(list(anis.webhook_events.get_webhook_events(query)), output)
+    elif command == "webhook-redeliver":
+        _show(anis.webhook_events.redeliver(args.event_id), output)
+    return None
+
+
+def _create_product(
+    anis: AnisPartnersClient,
+    wallet_id: UUID,
+    operation_id: UUID,
+    request: CreateMeterChargeRequest | CreateDirectRechargeRequest,
+    path: Path | None,
+    resuming: bool,
+    output: TextIO,
+) -> int | None:
+    """Create or resume with the saved id and body, then report the outcome and record only its name."""
+    result: object
+    if isinstance(request, CreateMeterChargeRequest):
+        send = anis.meter_charges.resume if resuming else anis.meter_charges.create
+        result = send(wallet_id=wallet_id, operation_id=operation_id, request=request)
+        resume = "meter-resume"
+    else:
+        send_direct = anis.direct_recharges.resume if resuming else anis.direct_recharges.create
+        result = send_direct(wallet_id=wallet_id, operation_id=operation_id, request=request)
+        resume = "direct-resume"
+    if path is not None:
+        _record_product_result(path, result)
+    _show_product_outcome(result, operation_id, resume, output)
+    return 2 if isinstance(result, (MeterChargeNotPlaced, DirectRechargeNotPlaced)) else None
 
 
 def _atomic_private_json(path: Path, value: object) -> None:
@@ -468,6 +718,8 @@ def _run_command(
                         _show(result, output)
                 else:
                     return 2
+            elif command in _PRODUCT_COMMANDS:
+                return _run_product_command(anis, args, settings, output)
             elif command == "tour":
                 _show(anis.profile.get(), output)
                 wallets = list(anis.wallets.list())

@@ -93,3 +93,51 @@ def test_client_signatures_verify_over_the_requests_actually_sent() -> None:
         assert request.headers["Accept-Language"] == "en"
         assert request.extensions["timeout"]["read"] == 30.0
         _wire_signature_verifies(request)
+
+
+def test_all_product_mutation_profiles_cover_transmitted_bytes() -> None:
+    """Verify both purchase and signed-change signatures from the final HTTPX request bytes."""
+    from anis_partners import SetWebhookEndpointRequest, UpdateDirectRechargeRecipientRequest
+    from tests.support.products import NOW, accepted, answer, api_requests, full_read, meter_request, recharge_request
+
+    def respond(request: httpx.Request) -> WireAnswer:
+        path = request.url.path
+        if path.endswith("/meter-charges"):
+            return answer(accepted(), 202)
+        if path.endswith("/direct-recharges"):
+            return answer(accepted(False), 202)
+        if "/meter-charges/" in path:
+            return answer(full_read())
+        if path.endswith("/recipient"):
+            return answer(accepted(False), 202, {"Location": f"/v1/direct-recharges/{OPERATION}"})
+        if "/direct-recharges/" in path:
+            return answer(full_read(False, "inProgress"))
+        if path == "/v1/webhook-endpoint":
+            return answer({"url": "https://receiver.test", "status": "verified", "generation": 1})
+        return answer({"id": str(OPERATION), "status": "pending", "queuedAt": NOW.isoformat()}, 202)
+
+    wire = SignedMockWire(respond)
+    with (
+        httpx.Client(transport=wire.transport) as http,
+        AnisPartnersClient(ClientOptions("https://partners.test"), SIGNER, http_client=http) as client,
+    ):
+        client.meter_charges.create(wallet_id=WALLET, operation_id=OPERATION, request=meter_request())
+        client.meter_charges.get(OPERATION)
+        client.direct_recharges.create(wallet_id=WALLET, operation_id=OPERATION, request=recharge_request())
+        client.direct_recharges.get(OPERATION)
+        client.direct_recharges.update_recipient(
+            OPERATION, UpdateDirectRechargeRecipientRequest(recharge_request().recipient)
+        )
+        client.webhook_endpoint.set(SetWebhookEndpointRequest("https://receiver.test"))
+        client.webhook_endpoint.test()
+        client.webhook_events.redeliver(OPERATION)
+    sent = api_requests(wire)
+    assert len(sent) == 8
+    nonces = set()
+    for request in sent:
+        _wire_signature_verifies(request)
+        if request.method != "GET":
+            nonces.add(request.headers["Nonce"])
+            purchase = request.url.path.endswith(("/meter-charges", "/direct-recharges"))
+            assert ("Idempotency-Key" in request.headers) is purchase
+    assert len(nonces) == 6

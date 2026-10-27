@@ -34,6 +34,7 @@ The SDK's `ErrorCode` values come from `contracts/error-catalogue.json`; the tab
 |---|---:|---|:---:|:---:|
 | `account_inactive` | 403 | `AuthorizationError` | no | no |
 | `allowed_debt_consent_required` | 402 | `AnisApiError` | no | no |
+| `amount_out_of_range` | 422 | `AnisApiError` | no | no |
 | `binding_not_authorized` | 403 | `AuthorizationError` | no | no |
 | `business_subscription_required` | 409 | `AuthorizationError` | no | no |
 | `card_not_found` | 404 | `ResourceNotFoundError` | no | no |
@@ -41,6 +42,8 @@ The SDK's `ErrorCode` values come from `contracts/error-catalogue.json`; the tab
 | `challenge_expired` | 409 | `EnrollmentRefusedError` | no | no |
 | `currency_not_supported` | 422 | `ValidationFailedError` | no | no |
 | `daily_limit_exceeded` | 429 | `LimitExceededError` | no | no |
+| `direct_recharge_not_suspended` | 409 | `AnisApiError` | no | no |
+| `direct_recharge_product_unavailable` | 409 | `AnisApiError` | no | no |
 | `dependency_unavailable` | 503 | `DependencyUnavailableError` | yes | yes |
 | `idempotency_conflict` | 409 | `IdempotencyConflictError` | no | no |
 | `insufficient_balance` | 409 | `InsufficientBalanceError` | no | no |
@@ -54,8 +57,12 @@ The SDK's `ErrorCode` values come from `contracts/error-catalogue.json`; the tab
 | `key_duplicate` | 409 | `EnrollmentRefusedError` | no | no |
 | `key_proof_invalid` | 422 | `EnrollmentRefusedError` | no | no |
 | `malformed_signed_request` | 400 | `AnisApiError` | no | yes |
+| `meter_rejected` | 422 | `AnisApiError` | no | no |
+| `network_not_removable` | 409 | `AnisApiError` | no | no |
 | `operation_processing` | 202 | `OrderProcessing` result, not an exception | yes | yes |
 | `owner_limit_exceeded` | 409 | `LimitExceededError` | no | no |
+| `package_unavailable` | 409 | `AnisApiError` | no | no |
+| `partner_network_limit_reached` | 409 | `AnisApiError` | no | no |
 | `price_changed` | 409 | `PriceChangedError` | no | no |
 | `purchase_not_allowed` | 403 / 409 | `AuthorizationError` | no | no |
 | `quantity_unavailable` | 409 | `OutOfStockError` | no | no |
@@ -68,6 +75,8 @@ The SDK's `ErrorCode` values come from `contracts/error-catalogue.json`; the tab
 | `source_ip_not_allowed` | 403 | `AuthorizationError` | no | no |
 | `spending_limit_exceeded` | 429 | `LimitExceededError` | no | no |
 | `validation_failed` | 422 | `ValidationFailedError` | no | no |
+| `webhook_endpoint_invalid` | 422 | `AnisApiError` | no | no |
+| `webhook_endpoint_unverified` | 409 | `AnisApiError` | no | no |
 | `wallet_disabled` | 409 | `AuthorizationError` | no | no |
 | `wallet_expired` | 409 | `AuthorizationError` | no | no |
 | `wallet_not_granted` | 404 | `ResourceNotFoundError` | no | yes |
@@ -89,6 +98,30 @@ Invalid caller arguments raise `ValueError` or `TypeError` directly. For example
 
 A read may be retried according to its error. An order with an unknown result must be resumed under the same operation id and exact body. Unknown future codes are not considered retryable. See [Orders and recovery](orders-and-recovery.md).
 
-`validation_failed` intentionally does not identify the failing field. Check the published request contract, exact three-place decimal limit, UUIDs, and body rules before trying again.
+`validation_failed` does not identify the failing field, except for recipient errors described below. Check the published request contract, exact three-place decimal limit, UUIDs, and body rules before trying again.
 
-The closed verification vocabulary is `signature_missing`, `signature_malformed`, `signature_invalid`, `content_digest_mismatch`, `covered_components_mismatch`, `unknown_key`, `key_rejected`, `algorithm_not_supported`, `label_unexpected`, `created_out_of_window`, `profile_unexpected`, `key_compromised`, `key_retired`, and `key_not_yet_valid`. These are local trust failures, not API refusal codes.
+## Recipient field errors
+
+A direct recharge create or recipient correction that fails recipient validation answers `validation_failed` (422) with the failing fields in the problem's extensions, for example `{"fields": {"recipient_number": "Invalid number"}}`. They stay available on the error unchanged:
+
+```python
+from collections.abc import Mapping
+
+from anis_partners import AnisApiError, UpdateDirectRechargeRecipientRequest
+
+try:
+    anis.direct_recharges.update_recipient(operation_id, UpdateDirectRechargeRecipientRequest(request.recipient))
+except AnisApiError as failure:
+    extensions = failure.problem.extensions
+    fields = extensions.get("fields") if isinstance(extensions, Mapping) else None
+    if isinstance(fields, Mapping):
+        names = [str(name) for name in fields]  # show which fields to fix, not what the partner typed
+```
+
+`failure.problem.extensions` keeps unknown members. The field messages are localized text that can echo what the customer typed: branch on the field name, never on the message, do not correct a recipient automatically, and do not log extension values wholesale. A whole problem is not automatically safe to log when it came from a recipient correction.
+
+## Product creates and signed changes
+
+`meter_rejected`, `package_unavailable`, `direct_recharge_product_unavailable` and `amount_out_of_range` are definitive refusals of a create and close it as not placed. `idempotency_conflict` is not: on a create or resume the operation may already have been accepted and charged, so it is an unknown outcome and you read the operation by its id with `get` before any new attempt. `direct_recharge_not_suspended` (the direct recharge is not paused), `webhook_endpoint_invalid` and `webhook_endpoint_unverified` refuse a signed change; they say nothing about a purchase. `purchase_not_allowed` keeps its two public statuses, 403 and 409; the SDK reports the status Anis actually sent.
+
+The closed verification vocabulary is `signature_missing`, `signature_malformed`, `signature_invalid`, `content_digest_mismatch`, `covered_components_mismatch`, `unknown_key`, `key_rejected`, `algorithm_not_supported`, `label_unexpected`, `created_out_of_window`, `profile_unexpected`, `key_compromised`, `key_retired`, and `key_not_yet_valid`. These are local trust failures, not API refusal codes. Notifications have their own vocabulary, `WebhookVerificationFailure`, described in [Webhooks](webhooks.md).

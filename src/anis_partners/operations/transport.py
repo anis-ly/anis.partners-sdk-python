@@ -10,7 +10,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from dataclasses import field as dataclass_field
 from datetime import UTC, timedelta
-from typing import TypeVar
+from typing import TYPE_CHECKING, TypeVar
 from uuid import UUID
 
 import httpx
@@ -53,7 +53,14 @@ from anis_partners.verification.partner_response_verifier import (
 )
 from anis_partners.verification.verifiable_response import VerifiableResponse
 
+if TYPE_CHECKING:
+    from anis_partners.models.direct_recharges import DirectRecharge, DirectRechargeAccepted
+    from anis_partners.models.meter_charges import MeterCharge, MeterChargeAccepted
+    from anis_partners.models.product_results import DirectRechargeProcessing, DirectRechargeResult, MeterChargeResult
+
+
 T = TypeVar("T")
+A = TypeVar("A")
 DEFAULT_RESUME_DELAY = timedelta(seconds=5)
 DOOR_REFUSAL_RESUME_DELAY = timedelta(seconds=60)
 
@@ -670,3 +677,147 @@ def record_unknown_order(core: RequestCore, operation_id: str, reason: str) -> N
         outcome="unknown",
         reason=reason,
     )
+
+
+def read_meter_charge(data: object, response: httpx.Response, operation_id: UUID) -> MeterCharge | MeterChargeAccepted:
+    """Dispatch verified status before parsing the processing or full owner body."""
+    from anis_partners.models.meter_charges import MeterCharge, MeterChargeAccepted
+
+    return _read_product(data, response, operation_id, MeterChargeAccepted.from_json, MeterCharge.from_json)
+
+
+def read_direct_recharge(
+    data: object, response: httpx.Response, operation_id: UUID
+) -> DirectRecharge | DirectRechargeAccepted:
+    """Keep unresolved acceptance separate from the eight full owner read states."""
+    from anis_partners.models.direct_recharges import DirectRecharge, DirectRechargeAccepted
+
+    return _read_product(data, response, operation_id, DirectRechargeAccepted.from_json, DirectRecharge.from_json)
+
+
+def read_recipient_update(data: object, response: httpx.Response, operation_id: UUID) -> DirectRechargeProcessing:
+    """CONTRACT §18.6 acknowledges the correction without claiming projection catch-up."""
+    from anis_partners.models.direct_recharges import DirectRechargeAccepted
+    from anis_partners.models.product_results import DirectRechargeProcessing
+
+    if response.status_code != 202:
+        raise MalformedResponseError("Recipient corrections require a 202 acknowledgement.")
+    acknowledgement = _read_product(
+        data, response, operation_id, DirectRechargeAccepted.from_json, DirectRechargeAccepted.from_json
+    )
+    location = response.headers.get("Location")
+    if not location or not location.strip():
+        raise MalformedResponseError("Recipient corrections require an acknowledgement and Location.")
+    result = classify_direct_recharge(acknowledgement, response)
+    if not isinstance(result, DirectRechargeProcessing):
+        raise MalformedResponseError("Recipient corrections require a processing acknowledgement.")
+    return result
+
+
+def _read_product(
+    data: object,
+    response: httpx.Response,
+    operation_id: UUID,
+    accepted_reader: Callable[[object], A],
+    read_reader: Callable[[object], T],
+) -> T | A:
+    """Use only a matching original identity and the schema assigned to the verified HTTP status."""
+    from anis_partners.models._json import field, identifier, object_data
+
+    try:
+        value = object_data(data)
+        if field(value, "operationId") is None or identifier(field(value, "operationId")) != operation_id:
+            raise ValueError("Operation identity mismatch.")
+        if response.status_code == 202:
+            return accepted_reader(value)
+        if response.status_code == 200:
+            return read_reader(value)
+        raise ValueError("Unexpected product response status.")
+    except Exception:
+        raise MalformedResponseError(
+            "The product answer does not match the requested operation and response schema."
+        ) from None
+
+
+def classify_meter_charge(charge: MeterCharge | MeterChargeAccepted, response: httpx.Response) -> MeterChargeResult:
+    """Close only succeeded charges or failed charges whose refund decision is authoritative."""
+    from anis_partners.models.meter_charges import MeterCharge, MeterChargeStatus, MeterRefundStatus
+    from anis_partners.models.product_results import MeterChargeFinal, MeterChargeOutcomeUnknown, MeterChargeProcessing
+
+    if isinstance(charge, MeterCharge):
+        if charge.status is MeterChargeStatus.UNKNOWN:
+            return MeterChargeOutcomeUnknown(
+                charge.operation_id, DEFAULT_RESUME_DELAY, MalformedResponseError("The charge status is unknown.")
+            )
+        if charge.status is MeterChargeStatus.SUCCEEDED or (
+            charge.status is MeterChargeStatus.FAILED
+            and charge.refund is not None
+            and charge.refund.status in {MeterRefundStatus.REFUNDED, MeterRefundStatus.NOT_CHARGED}
+        ):
+            return MeterChargeFinal(charge)
+    delay = _retry_after(response)
+    return MeterChargeProcessing(
+        charge, delay if delay is not None else DEFAULT_RESUME_DELAY, response.headers.get("Location")
+    )
+
+
+def classify_direct_recharge(
+    recharge: DirectRecharge | DirectRechargeAccepted, response: httpx.Response
+) -> DirectRechargeResult:
+    """Keep paid, paused and refund-pending states open until an explicit final owner status."""
+    from anis_partners.models.direct_recharges import DirectRecharge, DirectRechargeStatus
+    from anis_partners.models.product_results import (
+        DirectRechargeFinal,
+        DirectRechargeOutcomeUnknown,
+        DirectRechargeProcessing,
+    )
+
+    if isinstance(recharge, DirectRecharge):
+        if recharge.status is DirectRechargeStatus.UNKNOWN:
+            return DirectRechargeOutcomeUnknown(
+                recharge.operation_id,
+                DEFAULT_RESUME_DELAY,
+                MalformedResponseError("The direct recharge status is unknown."),
+            )
+        if recharge.status in {
+            DirectRechargeStatus.PAYMENT_FAILED,
+            DirectRechargeStatus.COMPLETED,
+            DirectRechargeStatus.REJECTED_WITH_REFUND,
+        }:
+            return DirectRechargeFinal(recharge)
+    delay = _retry_after(response)
+    return DirectRechargeProcessing(
+        recharge, delay if delay is not None else DEFAULT_RESUME_DELAY, response.headers.get("Location")
+    )
+
+
+def product_refusal_is_final(error: AnisApiError, resuming: bool, *, meter: bool) -> bool:
+    """A verified business refusal closes only this create or its recorded definitive answer.
+
+    ``idempotency_conflict`` is deliberately absent: the operation may already have been accepted and charged, so a
+    create or resume that meets it is an unknown outcome and the partner reads the operation by its id.
+    """
+    from anis_partners.errors import ErrorCode
+
+    definitive = {
+        (ErrorCode.PRICE_CHANGED, 409),
+        (ErrorCode.INSUFFICIENT_BALANCE, 409),
+        (ErrorCode.SPENDING_LIMIT_EXCEEDED, 429),
+        (ErrorCode.PURCHASE_NOT_ALLOWED, 403),
+        (ErrorCode.VALIDATION_FAILED, 422),
+    }
+    definitive.update(
+        {(ErrorCode.METER_REJECTED, 422), (ErrorCode.PACKAGE_UNAVAILABLE, 409)}
+        if meter
+        else {(ErrorCode.DIRECT_RECHARGE_PRODUCT_UNAVAILABLE, 409), (ErrorCode.AMOUNT_OUT_OF_RANGE, 422)}
+    )
+    return (error.code, error.status) in definitive and (not resuming or error.is_replayed)
+
+
+def product_refusal_delay(error: AnisApiError) -> timedelta:
+    """Retain signed retry advice, including zero, and the door-refusal default."""
+    from anis_partners.errors import refused_at_the_door
+
+    if error.retry_after is not None:
+        return error.retry_after
+    return DOOR_REFUSAL_RESUME_DELAY if refused_at_the_door(error.code) else DEFAULT_RESUME_DELAY

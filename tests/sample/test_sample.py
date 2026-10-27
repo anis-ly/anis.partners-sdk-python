@@ -18,6 +18,7 @@ from anis_partners import (
     AnisApiError,
     CreateOrderRequest,
     DependencyUnavailableError,
+    MeterChargeOutcomeUnknown,
     Order,
     OrderCompleted,
     OrderNotPlaced,
@@ -460,3 +461,195 @@ def test_withheld_completion_retains_stored_credentials_when_answer_has_none(tmp
 
     record = json.loads(path.read_text(encoding="utf-8"))
     assert record["credentials"] == previous
+
+
+class _ProductClient:
+    """Stand-in for the product groups that records what the sample sends."""
+
+    def __init__(self) -> None:
+        self.meter_charges = self
+        self.direct_recharges = self
+        self.intent_path: Path | None = None
+        self.calls: list[tuple[str, dict[str, object]]] = []
+
+    def __enter__(self) -> _ProductClient:
+        return self
+
+    def __exit__(self, *_args: object) -> None:
+        return None
+
+    def _outcome(self, name: str, kwargs: dict[str, object]) -> object:
+        self.calls.append((name, kwargs))
+        if self.intent_path is not None:
+            assert self.intent_path.stat().st_mode & 0o777 == 0o600
+            assert json.loads(self.intent_path.read_text(encoding="utf-8"))["operation_id"] == str(
+                kwargs["operation_id"]
+            )
+        return MeterChargeOutcomeUnknown(kwargs["operation_id"], timedelta(seconds=5), TimeoutError())  # type: ignore[arg-type]
+
+    def create(self, **kwargs: object) -> object:
+        return self._outcome("create", kwargs)
+
+    def resume(self, **kwargs: object) -> object:
+        return self._outcome("resume", kwargs)
+
+
+def test_meter_charge_persists_intent_then_reports_unknown_with_the_same_id(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """The saved id and body precede the create call, and an unknown outcome says to resume with that id."""
+    operation = UUID("7c9e6679-7425-40de-944b-e07fc1f90aea")
+    api = _ProductClient()
+    api.intent_path = tmp_path / f"{operation}.json"
+    monkeypatch.setattr(anis_sample, "_signer", lambda _settings: object())
+    monkeypatch.setattr(anis_sample, "AnisPartnersClient", lambda *args, **kwargs: api)
+    output = io.StringIO()
+    settings: dict[str, object] = {"Authority": "https://partners.example", "orders_folder": str(tmp_path)}
+
+    arguments = [
+        "meter-charge",
+        "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+        "7c9e6679-7425-40de-944b-e07fc1f90ae8",
+        "0268000710262",
+        "97.500",
+        "--operation",
+        str(operation),
+    ]
+    assert main(arguments, settings=settings, output=output) == 0
+
+    saved = json.loads(api.intent_path.read_text(encoding="utf-8"))
+    assert saved["kind"] == "meter"
+    assert saved["request"]["meterNumber"] == "0268000710262"
+    assert saved["outcome"] == "unknown"
+    assert f"UNKNOWN operation {operation}; meter-resume {operation}" in output.getvalue()
+
+    assert main(["meter-resume", str(operation)], settings=settings, output=io.StringIO()) == 0
+    assert [name for name, _ in api.calls] == ["create", "resume"]
+    assert api.calls[1][1]["operation_id"] == operation
+
+
+def test_direct_recharge_command_reads_recipient_fields_without_echoing_values() -> None:
+    """A malformed recipient argument is refused by the parser and its text is not printed."""
+    with pytest.raises(SystemExit):
+        anis_sample._parser().parse_args(
+            ["direct-recharge", "w", "p", "10.000", "12.000", "--recipient", "no-separator"]
+        )
+    parsed = anis_sample._parser().parse_args(
+        [
+            "direct-recharge",
+            "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+            "7c9e6679-7425-40de-944b-e07fc1f90ae8",
+            "10.000",
+            "12.000",
+            "--recipient",
+            "recipient_number=0912345678",
+        ]
+    )
+    assert parsed.recipient[0].key == "recipient_number"
+    assert parsed.recipient[0].value == "0912345678"
+
+
+def test_sample_hides_meter_tokens_and_recipient_details_unless_asked() -> None:
+    """Receipts and recipient fields are summarised by default."""
+    document = {"tokens": [{"code": "1234 5678"}], "recipient": [{"key": "recipient_number", "value": "0912345678"}]}
+    hidden = io.StringIO()
+    anis_sample._show(document, hidden)
+    assert "1234 5678" not in hidden.getvalue()
+    assert "0912345678" not in hidden.getvalue()
+    shown = io.StringIO()
+    anis_sample._show(document, shown, show_secrets=True)
+    assert "1234 5678" in shown.getvalue()
+
+
+def test_help_lists_product_and_webhook_commands() -> None:
+    """Every new command is discoverable from help."""
+    output = io.StringIO()
+    assert main(["help"], output=output) == 0
+    for command in ("meter-charge", "direct-quote", "direct-fix-recipient", "webhook-endpoint", "webhook-redeliver"):
+        assert command in output.getvalue()
+
+
+def test_direct_recharge_saved_empty_recipient_survives_sample_resume(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    from anis_partners import CreateDirectRechargeRequest, DirectRechargeOutcomeUnknown
+
+    operation = UUID("7c9e6679-7425-40de-944b-e07fc1f90aea")
+
+    class DirectClient(_ProductClient):
+        def _outcome(self, name: str, kwargs: dict[str, object]) -> object:
+            super()._outcome(name, kwargs)
+            return DirectRechargeOutcomeUnknown(operation, timedelta(seconds=5), TimeoutError())
+
+    api = DirectClient()
+    api.intent_path = tmp_path / f"{operation}.json"
+    monkeypatch.setattr(anis_sample, "_signer", lambda _settings: object())
+    monkeypatch.setattr(anis_sample, "AnisPartnersClient", lambda *args, **kwargs: api)
+    settings: dict[str, object] = {"Authority": "https://partners.example", "orders_folder": str(tmp_path)}
+    arguments = [
+        "direct-recharge",
+        str(UUID(int=1)),
+        str(UUID(int=2)),
+        "10.000",
+        "12.000",
+        "--operation",
+        str(operation),
+        "--recipient",
+        "OptionalField=",
+    ]
+    output = io.StringIO()
+    assert main(arguments, settings=settings, output=output) == 0
+    saved = json.loads(api.intent_path.read_text())
+    assert saved["request"]["recipient"] == [{"key": "OptionalField", "value": ""}]
+    assert saved["kind"] == "direct"
+    assert saved["outcome"] == "unknown"
+    assert main(["direct-resume", str(operation)], settings=settings, output=output) == 0
+    assert [name for name, _ in api.calls] == ["create", "resume"]
+    create, resume = (call[1]["request"] for call in api.calls)
+    assert isinstance(create, CreateDirectRechargeRequest)
+    assert isinstance(resume, CreateDirectRechargeRequest)
+    assert create == resume
+    assert resume.to_json()["recipient"] == [{"key": "OptionalField", "value": ""}]
+    assert api.calls[0][1]["operation_id"] == api.calls[1][1]["operation_id"] == operation
+
+
+def test_recipient_correction_sample_prints_acknowledgement_and_location_without_reading(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from anis_partners import DirectRechargeAccepted, DirectRechargeProcessing, UpdateDirectRechargeRecipientRequest
+
+    operation = UUID(int=77)
+    location = f"/v1/direct-recharges/{operation}"
+
+    class RecipientClient(_ProductClient):
+        def update_recipient(
+            self, operation_id: UUID, request: UpdateDirectRechargeRecipientRequest
+        ) -> DirectRechargeProcessing:
+            self.calls.append(("update_recipient", {"operation_id": operation_id, "request": request}))
+            return DirectRechargeProcessing(DirectRechargeAccepted(operation_id), timedelta(seconds=5), location)
+
+    client = RecipientClient()
+    monkeypatch.setattr(anis_sample, "_signer", lambda _settings: object())
+    monkeypatch.setattr(anis_sample, "AnisPartnersClient", lambda *args, **kwargs: client)
+    output = io.StringIO()
+    assert (
+        main(
+            ["direct-fix-recipient", str(operation), "--recipient", "OptionalField="],
+            settings={"Authority": "https://partners.example"},
+            output=output,
+        )
+        == 0
+    )
+    assert len(client.calls) == 1
+    assert client.calls[0][0] == "update_recipient"
+    request = client.calls[0][1]["request"]
+    assert isinstance(request, UpdateDirectRechargeRecipientRequest)
+    assert request.to_json() == {"recipient": [{"key": "OptionalField", "value": ""}]}
+    lines = output.getvalue().splitlines()
+    assert f"Location={location}" in lines[-1]
+    assert f"direct-status {operation}" in lines[-1]
+    assert json.loads("\n".join(lines[:-1])) == {
+        "operationId": str(operation),
+        "operationType": "directRecharge",
+        "status": "processing",
+    }
