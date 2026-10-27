@@ -1,0 +1,94 @@
+{
+  "id": "WH-066-envelope-missing-offset",
+  "title": "Signed envelope timestamp: missing-offset",
+  "description": "Signed envelope timestamp: missing-offset",
+  "route": "POST https://pos.example.ly/hooks/anis",
+  "profile": "anis-partner-webhook-v1",
+  "verifyAt": 1792484045,
+  "receiver": {
+    "configuredUrl": "https://pos.example.ly/hooks/anis",
+    "applicationId": "9b2d1241-413e-4ae8-ae32-b15c58dbe101"
+  },
+  "request": {
+    "method": "POST",
+    "targetUri": "https://pos.example.ly/hooks/anis",
+    "headers": {
+      "Content-Type": "application/json; charset=utf-8",
+      "Content-Digest": "sha-256=:hKijb2oFk9DT0h9NHr7IuQ6EtaP36wUQ/WkLoBMKCXs=:",
+      "Signature-Input": "sig1=(\u0022@method\u0022 \u0022@target-uri\u0022 \u0022content-digest\u0022 \u0022webhook-id\u0022 \u0022anis-webhook-attempt\u0022 \u0022anis-application-id\u0022);created=1792484040;expires=1792484340;keyid=\u0022partner-webhook-signing/11111111111111111111111111111111\u0022;alg=\u0022ecdsa-p256-sha256\u0022;tag=\u0022anis-partner-webhook-v1\u0022",
+      "Signature": "sig1=:KATS6byMWZubxtklxKXbpaWGlJTB1f6sWp4/wTMwmqge3ReDjk7GCjlHftR02qSPAmmqT3KpVzlah7ms\u002B/KZCg==:",
+      "webhook-id": "4bceba8e-55d1-59ec-b560-6c1e08f2ae3a",
+      "anis-webhook-attempt": "1",
+      "anis-application-id": "9b2d1241-413e-4ae8-ae32-b15c58dbe101",
+      "User-Agent": "Anis-Partner-Webhooks/1.0"
+    },
+    "bodyBase64": "eyJpZCI6IjRiY2ViYThlLTU1ZDEtNTllYy1iNTYwLTZjMWUwOGYyYWUzYSIsInR5cGUiOiJtZXRlckNoYXJnZS5zdWNjZWVkZWQiLCJvY2N1cnJlZEF0IjoiMjAyNi0xMC0yMFQwODoxMzowMiIsImFwcGxpY2F0aW9uSWQiOiI5YjJkMTI0MS00MTNlLTRhZTgtYWUzMi1iMTVjNThkYmUxMDEiLCJkYXRhIjp7ImNvbXBsZXRlZEF0IjoiMjAyNi0xMC0yMFQwODoxMzowMloiLCJjcmVhdGVkQXQiOiIyMDI2LTEwLTIwVDA4OjEyOjQ0WiIsImV4dGVybmFsUmVmZXJlbmNlIjoiUE9TLTc3LUlOVi0xMDkzIiwibWV0ZXJOdW1iZXIiOiIwMjY4MDAwNzEwMjYyIiwib3BlcmF0aW9uSWQiOiIzYzFlOWI3YS0wZDQyLTRmNWUtOGE2MS0yYjljN2QwZTVmMTMiLCJwYWNrYWdlIjp7ImdlY29sUGFja2FnZU5hbWUiOiJQS0dfMTAwIiwiaWQiOiI1ZjNiOGMyMS01ZjNiLTRjMjEtOGYzYi01ZjNiOGMyMTVmM2IiLCJuYW1lIjoi2KjYp9mC2KkgMTAwINiv2YrZhtin2LEifSwicGVyc29uYWxQcmljZSI6eyJhbW91bnQiOiIxMDAuMDAwIiwiY3VycmVuY3kiOiJMWUQifSwicmVjZWlwdCI6eyJjcmVkaXRlZEFtb3VudCI6Ijg4LjY0MCIsInJlY2VpcHROdW1iZXIiOiIyNjAwMjAxMDM3NDQiLCJ0YXhlcyI6W3siYW1vdW50IjoiNS4wMDAiLCJkZXNjcmlwdGlvbiI6Iti22LHZitio2Kkg2KfZhNin2LPYqtmH2YTYp9mDIn0seyJhbW91bnQiOiIzLjg2MCIsImRlc2NyaXB0aW9uIjoi2LHYs9mI2YUg2KfZhNiu2K/ZhdipIn1dLCJ0b2tlbnMiOlt7ImNvZGUiOiIxMjM0IDU2NzggOTAxMiAzNDU2IDc4OTAiLCJkZXNjcmlwdGlvbiI6IktleSBjaGFuZ2UgdG9rZW4gMSIsImxhYmVsIjoiS0NUMSIsInNlcXVlbmNlIjoxfSx7ImNvZGUiOiIyMzQ1IDY3ODkgMDEyMyA0NTY3IDg5MDEiLCJkZXNjcmlwdGlvbiI6IktleSBjaGFuZ2UgdG9rZW4gMiIsImxhYmVsIjoiS0NUMiIsInNlcXVlbmNlIjoyfSx7ImNvZGUiOiI1ODIxIDAwMzQgNzcxOSAyMjY1IDA0MTgiLCJkZXNjcmlwdGlvbiI6IkNyZWRpdCB0b2tlbiIsImxhYmVsIjoiU1RTIiwic2VxdWVuY2UiOjN9XX0sInN0YXR1cyI6InN1Y2NlZWRlZCIsInRvdGFsIjp7ImFtb3VudCI6Ijk3LjUwMCIsImN1cnJlbmN5IjoiTFlEIn0sIndhbGxldElkIjoiNzE4MjUyNjYtNzE4Mi00MTgyLTgxODItNzE4MjUyNjY3MTgyIn19",
+    "bodyUtf8": "{\u0022id\u0022:\u00224bceba8e-55d1-59ec-b560-6c1e08f2ae3a\u0022,\u0022type\u0022:\u0022meterCharge.succeeded\u0022,\u0022occurredAt\u0022:\u00222026-10-20T08:13:02\u0022,\u0022applicationId\u0022:\u00229b2d1241-413e-4ae8-ae32-b15c58dbe101\u0022,\u0022data\u0022:{\u0022completedAt\u0022:\u00222026-10-20T08:13:02Z\u0022,\u0022createdAt\u0022:\u00222026-10-20T08:12:44Z\u0022,\u0022externalReference\u0022:\u0022POS-77-INV-1093\u0022,\u0022meterNumber\u0022:\u00220268000710262\u0022,\u0022operationId\u0022:\u00223c1e9b7a-0d42-4f5e-8a61-2b9c7d0e5f13\u0022,\u0022package\u0022:{\u0022gecolPackageName\u0022:\u0022PKG_100\u0022,\u0022id\u0022:\u00225f3b8c21-5f3b-4c21-8f3b-5f3b8c215f3b\u0022,\u0022name\u0022:\u0022\u0628\u0627\u0642\u0629 100 \u062F\u064A\u0646\u0627\u0631\u0022},\u0022personalPrice\u0022:{\u0022amount\u0022:\u0022100.000\u0022,\u0022currency\u0022:\u0022LYD\u0022},\u0022receipt\u0022:{\u0022creditedAmount\u0022:\u002288.640\u0022,\u0022receiptNumber\u0022:\u0022260020103744\u0022,\u0022taxes\u0022:[{\u0022amount\u0022:\u00225.000\u0022,\u0022description\u0022:\u0022\u0636\u0631\u064A\u0628\u0629 \u0627\u0644\u0627\u0633\u062A\u0647\u0644\u0627\u0643\u0022},{\u0022amount\u0022:\u00223.860\u0022,\u0022description\u0022:\u0022\u0631\u0633\u0648\u0645 \u0627\u0644\u062E\u062F\u0645\u0629\u0022}],\u0022tokens\u0022:[{\u0022code\u0022:\u00221234 5678 9012 3456 7890\u0022,\u0022description\u0022:\u0022Key change token 1\u0022,\u0022label\u0022:\u0022KCT1\u0022,\u0022sequence\u0022:1},{\u0022code\u0022:\u00222345 6789 0123 4567 8901\u0022,\u0022description\u0022:\u0022Key change token 2\u0022,\u0022label\u0022:\u0022KCT2\u0022,\u0022sequence\u0022:2},{\u0022code\u0022:\u00225821 0034 7719 2265 0418\u0022,\u0022description\u0022:\u0022Credit token\u0022,\u0022label\u0022:\u0022STS\u0022,\u0022sequence\u0022:3}]},\u0022status\u0022:\u0022succeeded\u0022,\u0022total\u0022:{\u0022amount\u0022:\u002297.500\u0022,\u0022currency\u0022:\u0022LYD\u0022},\u0022walletId\u0022:\u002271825266-7182-4182-8182-718252667182\u0022}}"
+  },
+  "signingKeys": {
+    "keys": [
+      {
+        "kty": "EC",
+        "crv": "P-256",
+        "x": "bmeAJqm9Bwq1qpRxN64CnOYN2WaslFCCduE1M2bhRQU",
+        "y": "V7rgefFMX7Vfs5UQf8NmOil4j6HmkLgyjgLQnPWVeFI",
+        "kid": "partner-webhook-signing/11111111111111111111111111111111",
+        "use": "sig",
+        "alg": "ES256",
+        "status": "active",
+        "purpose": "webhook",
+        "notBefore": "2026-10-20T08:12:20.0000000\u002B00:00"
+      },
+      {
+        "kty": "EC",
+        "crv": "P-256",
+        "x": "er2q-OPbI_D9z00KYCnHWyBy1_9G9dR-DXk10tC4w4M",
+        "y": "wCl8upDZi1PmxfC8xKhsmVidCdIpaa_DAiPu1gFYPmc",
+        "kid": "partner-webhook-signing/22222222222222222222222222222222",
+        "use": "sig",
+        "alg": "ES256",
+        "status": "next",
+        "purpose": "webhook",
+        "notBefore": "2026-10-20T08:12:20.0000000\u002B00:00"
+      },
+      {
+        "kty": "EC",
+        "crv": "P-256",
+        "x": "KpEKtjMs9wdka1QzBBzIbukX71gl2N36yrYufvktAEU",
+        "y": "cYho-fi98X3voIEv7lkMH3KjJMyFF3hbzc4_3IQd9GM",
+        "kid": "partner-webhook-signing/33333333333333333333333333333333",
+        "use": "sig",
+        "alg": "ES256",
+        "status": "retired",
+        "purpose": "webhook",
+        "notBefore": "2026-10-20T08:12:20.0000000\u002B00:00",
+        "retiredAt": "2026-10-20T08:14:10.0000000\u002B00:00"
+      },
+      {
+        "kty": "EC",
+        "crv": "P-256",
+        "x": "er2q-OPbI_D9z00KYCnHWyBy1_9G9dR-DXk10tC4w4M",
+        "y": "wCl8upDZi1PmxfC8xKhsmVidCdIpaa_DAiPu1gFYPmc",
+        "kid": "partner-response-signing/55555555555555555555555555555555",
+        "use": "sig",
+        "alg": "ES256",
+        "status": "active",
+        "purpose": "answer",
+        "notBefore": "2026-10-20T08:12:20.0000000\u002B00:00"
+      }
+    ],
+    "revoked": [
+      {
+        "kid": "partner-webhook-signing/44444444444444444444444444444444",
+        "compromisedAt": "2026-10-20T08:14:10+00:00"
+      }
+    ]
+  },
+  "expected": {
+    "outcome": "reject",
+    "reason": "envelope_invalid",
+    "rationale": "Signed envelope timestamp: missing-offset",
+    "phase": "parse"
+  },
+  "signatureBaseForDebugging": "\u0022@method\u0022: POST\n\u0022@target-uri\u0022: https://pos.example.ly/hooks/anis\n\u0022content-digest\u0022: sha-256=:hKijb2oFk9DT0h9NHr7IuQ6EtaP36wUQ/WkLoBMKCXs=:\n\u0022webhook-id\u0022: 4bceba8e-55d1-59ec-b560-6c1e08f2ae3a\n\u0022anis-webhook-attempt\u0022: 1\n\u0022anis-application-id\u0022: 9b2d1241-413e-4ae8-ae32-b15c58dbe101\n\u0022@signature-params\u0022: (\u0022@method\u0022 \u0022@target-uri\u0022 \u0022content-digest\u0022 \u0022webhook-id\u0022 \u0022anis-webhook-attempt\u0022 \u0022anis-application-id\u0022);created=1792484040;expires=1792484340;keyid=\u0022partner-webhook-signing/11111111111111111111111111111111\u0022;alg=\u0022ecdsa-p256-sha256\u0022;tag=\u0022anis-partner-webhook-v1\u0022"
+}

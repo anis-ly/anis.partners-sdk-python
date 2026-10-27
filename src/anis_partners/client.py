@@ -13,17 +13,27 @@ from anis_partners.operations.groups import (
     AsyncAccessOperations,
     AsyncCatalogueOperations,
     AsyncDiagnosticsOperations,
+    AsyncDirectRechargeOperations,
+    AsyncDirectRechargeProductOperations,
+    AsyncMeterChargeOperations,
     AsyncOrderOperations,
     AsyncOwnedCardOperations,
     AsyncProfileOperations,
     AsyncWalletOperations,
+    AsyncWebhookEndpointOperations,
+    AsyncWebhookEventOperations,
     SyncAccessOperations,
     SyncCatalogueOperations,
     SyncDiagnosticsOperations,
+    SyncDirectRechargeOperations,
+    SyncDirectRechargeProductOperations,
+    SyncMeterChargeOperations,
     SyncOrderOperations,
     SyncOwnedCardOperations,
     SyncProfileOperations,
     SyncWalletOperations,
+    SyncWebhookEndpointOperations,
+    SyncWebhookEventOperations,
 )
 from anis_partners.operations.transport import AsyncTransport, RequestCore, SyncTransport
 from anis_partners.options import ClientOptions
@@ -68,6 +78,11 @@ class AnisPartnersClient:
         self.wallets = SyncWalletOperations(transport)
         self.catalogue = SyncCatalogueOperations(transport)
         self.orders = SyncOrderOperations(transport)
+        self.meter_charges = SyncMeterChargeOperations(transport)
+        self.direct_recharge_products = SyncDirectRechargeProductOperations(transport)
+        self.direct_recharges = SyncDirectRechargeOperations(transport)
+        self.webhook_endpoint = SyncWebhookEndpointOperations(transport)
+        self.webhook_events = SyncWebhookEventOperations(transport)
         self.owned_cards = SyncOwnedCardOperations(transport)
         self.diagnostics = SyncDiagnosticsOperations(transport)
 
@@ -119,6 +134,11 @@ class AsyncAnisPartnersClient:
         self.wallets = AsyncWalletOperations(transport)
         self.catalogue = AsyncCatalogueOperations(transport)
         self.orders = AsyncOrderOperations(transport)
+        self.meter_charges = AsyncMeterChargeOperations(transport)
+        self.direct_recharge_products = AsyncDirectRechargeProductOperations(transport)
+        self.direct_recharges = AsyncDirectRechargeOperations(transport)
+        self.webhook_endpoint = AsyncWebhookEndpointOperations(transport)
+        self.webhook_events = AsyncWebhookEventOperations(transport)
         self.owned_cards = AsyncOwnedCardOperations(transport)
         self.diagnostics = AsyncDiagnosticsOperations(transport)
 

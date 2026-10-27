@@ -1,0 +1,100 @@
+{
+  "id": "WH-045-fixture-circle-suspended",
+  "title": "Exact published envelope: circle-suspended",
+  "description": "Exact published envelope: circle-suspended",
+  "route": "POST https://pos.example.ly/hooks/anis",
+  "profile": "anis-partner-webhook-v1",
+  "verifyAt": 1792484045,
+  "receiver": {
+    "configuredUrl": "https://pos.example.ly/hooks/anis",
+    "applicationId": "9b2d1241-413e-4ae8-ae32-b15c58dbe101"
+  },
+  "request": {
+    "method": "POST",
+    "targetUri": "https://pos.example.ly/hooks/anis",
+    "headers": {
+      "Content-Type": "application/json; charset=utf-8",
+      "Content-Digest": "sha-256=:uTQfru\u002BDK2bn3ur3JjuMutyuy18sNCHq5lk41Hfuhvg=:",
+      "Signature-Input": "sig1=(\u0022@method\u0022 \u0022@target-uri\u0022 \u0022content-digest\u0022 \u0022webhook-id\u0022 \u0022anis-webhook-attempt\u0022 \u0022anis-application-id\u0022);created=1792484040;expires=1792484340;keyid=\u0022partner-webhook-signing/11111111111111111111111111111111\u0022;alg=\u0022ecdsa-p256-sha256\u0022;tag=\u0022anis-partner-webhook-v1\u0022",
+      "Signature": "sig1=:i9Z2rB9rs/utOifJ4rjydSFb\u002BbOxzYGFUMouxA0lTzRgEPQwQsdODDqrKu1/Dlh2EsyTKqn0nX19f9gg\u002BR4s9A==:",
+      "webhook-id": "0ef5f62f-b3f0-5436-8e1f-5806629ad7c0",
+      "anis-webhook-attempt": "1",
+      "anis-application-id": "9b2d1241-413e-4ae8-ae32-b15c58dbe101",
+      "User-Agent": "Anis-Partner-Webhooks/1.0"
+    },
+    "bodyBase64": "eyJpZCI6IjBlZjVmNjJmLWIzZjAtNTQzNi04ZTFmLTU4MDY2MjlhZDdjMCIsInR5cGUiOiJkaXJlY3RSZWNoYXJnZS5zdXNwZW5kZWQiLCJvY2N1cnJlZEF0IjoiMjAyNi0xMC0yMFQxMDowMDowMFoiLCJhcHBsaWNhdGlvbklkIjoiOWIyZDEyNDEtNDEzZS00YWU4LWFlMzItYjE1YzU4ZGJlMTAxIiwiZGF0YSI6eyJjb21taXNzaW9uIjp7ImFtb3VudCI6IjUuMDAwIiwiY3VycmVuY3kiOiJMWUQifSwiZXhjaGFuZ2VSYXRlIjoiMC4xNTUwMDAiLCJleHRlcm5hbFJlZmVyZW5jZSI6IlBPUy03Ny1UUi01NTEiLCJub3RlIjoiRmFtaWx5IHN1cHBvcnQiLCJudW1iZXIiOjMwNDEyLCJvcGVyYXRpb25JZCI6IjdkNGUxYTkwLTViMmMtNGU3Zi04YTEzLTBjOWQ2ZTJiNGY4MSIsInBheW91dCI6eyJhbW91bnQiOiIxNTAwLjAwMCIsImN1cnJlbmN5Ijp7Im5hbWUiOiLYrNmG2YrZhyDZhdi12LHZiiJ9fSwicHJpY2UiOnsiYW1vdW50IjoiMjMyLjUwMCIsImN1cnJlbmN5IjoiTFlEIn0sInByb2R1Y3QiOnsiaWQiOiJlN2MyYTlkNC0xYjNmLTRhODUtOWM2MC04ZDJlNGY3YjFhOTMiLCJ0aXRsZSI6ItmB2YjYr9in2YHZiNmGINmD2KfYtCDZhdi12LEifSwicmVhc29uIjoi2LHZgtmFINin2YTZhdit2YHYuNipINi62YrYsSDYtdit2YrYrSIsInJlY2lwaWVudCI6W3sia2V5IjoicmVjaXBpZW50X25hbWUiLCJuYW1lIjp7ImFyIjoi2KfYs9mFINin2YTZhdiz2KrZhNmFIiwiZW4iOiJSZWNpcGllbnQgbmFtZSJ9LCJ2YWx1ZSI6IkFobWVkIEFsaSJ9LHsia2V5IjoicmVjaXBpZW50X251bWJlciIsIm5hbWUiOnsiYXIiOiLYsdmC2YUg2KfZhNmF2K3Zgdi42KkiLCJlbiI6IldhbGxldCBudW1iZXIifSwidmFsdWUiOiIwMTAxMjM0NTY3OCJ9XSwicmVxdWVzdGVkQXQiOiIyMDI2LTEwLTIwVDA5OjAwOjAwWiIsInN0YXR1cyI6InN1c3BlbmRlZERhdGFFcnJvciIsInRvdGFsIjp7ImFtb3VudCI6IjIzNy41MDAiLCJjdXJyZW5jeSI6IkxZRCJ9LCJ3YWxsZXRJZCI6IjcxODI1MjY2LTcxODItNDE4Mi04MTgyLTcxODI1MjY2NzE4MiJ9fQ==",
+    "bodyUtf8": "{\u0022id\u0022:\u00220ef5f62f-b3f0-5436-8e1f-5806629ad7c0\u0022,\u0022type\u0022:\u0022directRecharge.suspended\u0022,\u0022occurredAt\u0022:\u00222026-10-20T10:00:00Z\u0022,\u0022applicationId\u0022:\u00229b2d1241-413e-4ae8-ae32-b15c58dbe101\u0022,\u0022data\u0022:{\u0022commission\u0022:{\u0022amount\u0022:\u00225.000\u0022,\u0022currency\u0022:\u0022LYD\u0022},\u0022exchangeRate\u0022:\u00220.155000\u0022,\u0022externalReference\u0022:\u0022POS-77-TR-551\u0022,\u0022note\u0022:\u0022Family support\u0022,\u0022number\u0022:30412,\u0022operationId\u0022:\u00227d4e1a90-5b2c-4e7f-8a13-0c9d6e2b4f81\u0022,\u0022payout\u0022:{\u0022amount\u0022:\u00221500.000\u0022,\u0022currency\u0022:{\u0022name\u0022:\u0022\u062C\u0646\u064A\u0647 \u0645\u0635\u0631\u064A\u0022}},\u0022price\u0022:{\u0022amount\u0022:\u0022232.500\u0022,\u0022currency\u0022:\u0022LYD\u0022},\u0022product\u0022:{\u0022id\u0022:\u0022e7c2a9d4-1b3f-4a85-9c60-8d2e4f7b1a93\u0022,\u0022title\u0022:\u0022\u0641\u0648\u062F\u0627\u0641\u0648\u0646 \u0643\u0627\u0634 \u0645\u0635\u0631\u0022},\u0022reason\u0022:\u0022\u0631\u0642\u0645 \u0627\u0644\u0645\u062D\u0641\u0638\u0629 \u063A\u064A\u0631 \u0635\u062D\u064A\u062D\u0022,\u0022recipient\u0022:[{\u0022key\u0022:\u0022recipient_name\u0022,\u0022name\u0022:{\u0022ar\u0022:\u0022\u0627\u0633\u0645 \u0627\u0644\u0645\u0633\u062A\u0644\u0645\u0022,\u0022en\u0022:\u0022Recipient name\u0022},\u0022value\u0022:\u0022Ahmed Ali\u0022},{\u0022key\u0022:\u0022recipient_number\u0022,\u0022name\u0022:{\u0022ar\u0022:\u0022\u0631\u0642\u0645 \u0627\u0644\u0645\u062D\u0641\u0638\u0629\u0022,\u0022en\u0022:\u0022Wallet number\u0022},\u0022value\u0022:\u002201012345678\u0022}],\u0022requestedAt\u0022:\u00222026-10-20T09:00:00Z\u0022,\u0022status\u0022:\u0022suspendedDataError\u0022,\u0022total\u0022:{\u0022amount\u0022:\u0022237.500\u0022,\u0022currency\u0022:\u0022LYD\u0022},\u0022walletId\u0022:\u002271825266-7182-4182-8182-718252667182\u0022}}"
+  },
+  "signingKeys": {
+    "keys": [
+      {
+        "kty": "EC",
+        "crv": "P-256",
+        "x": "bmeAJqm9Bwq1qpRxN64CnOYN2WaslFCCduE1M2bhRQU",
+        "y": "V7rgefFMX7Vfs5UQf8NmOil4j6HmkLgyjgLQnPWVeFI",
+        "kid": "partner-webhook-signing/11111111111111111111111111111111",
+        "use": "sig",
+        "alg": "ES256",
+        "status": "active",
+        "purpose": "webhook",
+        "notBefore": "2026-10-20T08:12:20.0000000\u002B00:00"
+      },
+      {
+        "kty": "EC",
+        "crv": "P-256",
+        "x": "er2q-OPbI_D9z00KYCnHWyBy1_9G9dR-DXk10tC4w4M",
+        "y": "wCl8upDZi1PmxfC8xKhsmVidCdIpaa_DAiPu1gFYPmc",
+        "kid": "partner-webhook-signing/22222222222222222222222222222222",
+        "use": "sig",
+        "alg": "ES256",
+        "status": "next",
+        "purpose": "webhook",
+        "notBefore": "2026-10-20T08:12:20.0000000\u002B00:00"
+      },
+      {
+        "kty": "EC",
+        "crv": "P-256",
+        "x": "KpEKtjMs9wdka1QzBBzIbukX71gl2N36yrYufvktAEU",
+        "y": "cYho-fi98X3voIEv7lkMH3KjJMyFF3hbzc4_3IQd9GM",
+        "kid": "partner-webhook-signing/33333333333333333333333333333333",
+        "use": "sig",
+        "alg": "ES256",
+        "status": "retired",
+        "purpose": "webhook",
+        "notBefore": "2026-10-20T08:12:20.0000000\u002B00:00",
+        "retiredAt": "2026-10-20T08:14:10.0000000\u002B00:00"
+      },
+      {
+        "kty": "EC",
+        "crv": "P-256",
+        "x": "er2q-OPbI_D9z00KYCnHWyBy1_9G9dR-DXk10tC4w4M",
+        "y": "wCl8upDZi1PmxfC8xKhsmVidCdIpaa_DAiPu1gFYPmc",
+        "kid": "partner-response-signing/55555555555555555555555555555555",
+        "use": "sig",
+        "alg": "ES256",
+        "status": "active",
+        "purpose": "answer",
+        "notBefore": "2026-10-20T08:12:20.0000000\u002B00:00"
+      }
+    ],
+    "revoked": [
+      {
+        "kid": "partner-webhook-signing/44444444444444444444444444444444",
+        "compromisedAt": "2026-10-20T08:14:10+00:00"
+      }
+    ]
+  },
+  "expected": {
+    "outcome": "accept",
+    "reason": null,
+    "rationale": "Exact published envelope: circle-suspended",
+    "phase": "verify",
+    "envelope": {
+      "id": "0ef5f62f-b3f0-5436-8e1f-5806629ad7c0",
+      "type": "directRecharge.suspended",
+      "applicationId": "9b2d1241-413e-4ae8-ae32-b15c58dbe101",
+      "dataRaw": "{\u0022commission\u0022:{\u0022amount\u0022:\u00225.000\u0022,\u0022currency\u0022:\u0022LYD\u0022},\u0022exchangeRate\u0022:\u00220.155000\u0022,\u0022externalReference\u0022:\u0022POS-77-TR-551\u0022,\u0022note\u0022:\u0022Family support\u0022,\u0022number\u0022:30412,\u0022operationId\u0022:\u00227d4e1a90-5b2c-4e7f-8a13-0c9d6e2b4f81\u0022,\u0022payout\u0022:{\u0022amount\u0022:\u00221500.000\u0022,\u0022currency\u0022:{\u0022name\u0022:\u0022\u062C\u0646\u064A\u0647 \u0645\u0635\u0631\u064A\u0022}},\u0022price\u0022:{\u0022amount\u0022:\u0022232.500\u0022,\u0022currency\u0022:\u0022LYD\u0022},\u0022product\u0022:{\u0022id\u0022:\u0022e7c2a9d4-1b3f-4a85-9c60-8d2e4f7b1a93\u0022,\u0022title\u0022:\u0022\u0641\u0648\u062F\u0627\u0641\u0648\u0646 \u0643\u0627\u0634 \u0645\u0635\u0631\u0022},\u0022reason\u0022:\u0022\u0631\u0642\u0645 \u0627\u0644\u0645\u062D\u0641\u0638\u0629 \u063A\u064A\u0631 \u0635\u062D\u064A\u062D\u0022,\u0022recipient\u0022:[{\u0022key\u0022:\u0022recipient_name\u0022,\u0022name\u0022:{\u0022ar\u0022:\u0022\u0627\u0633\u0645 \u0627\u0644\u0645\u0633\u062A\u0644\u0645\u0022,\u0022en\u0022:\u0022Recipient name\u0022},\u0022value\u0022:\u0022Ahmed Ali\u0022},{\u0022key\u0022:\u0022recipient_number\u0022,\u0022name\u0022:{\u0022ar\u0022:\u0022\u0631\u0642\u0645 \u0627\u0644\u0645\u062D\u0641\u0638\u0629\u0022,\u0022en\u0022:\u0022Wallet number\u0022},\u0022value\u0022:\u002201012345678\u0022}],\u0022requestedAt\u0022:\u00222026-10-20T09:00:00Z\u0022,\u0022status\u0022:\u0022suspendedDataError\u0022,\u0022total\u0022:{\u0022amount\u0022:\u0022237.500\u0022,\u0022currency\u0022:\u0022LYD\u0022},\u0022walletId\u0022:\u002271825266-7182-4182-8182-718252667182\u0022}"
+    }
+  },
+  "signatureBaseForDebugging": "\u0022@method\u0022: POST\n\u0022@target-uri\u0022: https://pos.example.ly/hooks/anis\n\u0022content-digest\u0022: sha-256=:uTQfru\u002BDK2bn3ur3JjuMutyuy18sNCHq5lk41Hfuhvg=:\n\u0022webhook-id\u0022: 0ef5f62f-b3f0-5436-8e1f-5806629ad7c0\n\u0022anis-webhook-attempt\u0022: 1\n\u0022anis-application-id\u0022: 9b2d1241-413e-4ae8-ae32-b15c58dbe101\n\u0022@signature-params\u0022: (\u0022@method\u0022 \u0022@target-uri\u0022 \u0022content-digest\u0022 \u0022webhook-id\u0022 \u0022anis-webhook-attempt\u0022 \u0022anis-application-id\u0022);created=1792484040;expires=1792484340;keyid=\u0022partner-webhook-signing/11111111111111111111111111111111\u0022;alg=\u0022ecdsa-p256-sha256\u0022;tag=\u0022anis-partner-webhook-v1\u0022"
+}

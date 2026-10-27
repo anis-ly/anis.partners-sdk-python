@@ -242,4 +242,6 @@ class Page(Generic[T]):
 
     def to_json(self) -> dict[str, object]:
         """Serialize items and cursor without renaming contract members."""
-        return model_json(self)
+        result = model_json(self)
+        result["nextCursor"] = self.next_cursor
+        return result

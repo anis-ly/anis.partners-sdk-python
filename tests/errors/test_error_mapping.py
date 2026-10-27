@@ -29,7 +29,16 @@ from anis_partners.errors import (
 )
 
 DECISIONS: dict[str, tuple[type[AnisApiError], OrderRefusalOutcome]] = {
+    "meter_rejected": (AnisApiError, OrderRefusalOutcome.NOT_PLACED),
+    "package_unavailable": (AnisApiError, OrderRefusalOutcome.NOT_PLACED),
+    "direct_recharge_product_unavailable": (AnisApiError, OrderRefusalOutcome.NOT_PLACED),
+    "amount_out_of_range": (AnisApiError, OrderRefusalOutcome.NOT_PLACED),
+    "direct_recharge_not_suspended": (AnisApiError, OrderRefusalOutcome.NOT_PLACED),
+    "webhook_endpoint_invalid": (AnisApiError, OrderRefusalOutcome.NOT_PLACED),
+    "webhook_endpoint_unverified": (AnisApiError, OrderRefusalOutcome.NOT_PLACED),
     "key_not_revocable": (AnisApiError, OrderRefusalOutcome.NOT_PLACED),
+    "network_not_removable": (AnisApiError, OrderRefusalOutcome.NOT_PLACED),
+    "partner_network_limit_reached": (AnisApiError, OrderRefusalOutcome.NOT_PLACED),
     "insufficient_balance": (InsufficientBalanceError, OrderRefusalOutcome.NOT_PLACED),
     "price_changed": (PriceChangedError, OrderRefusalOutcome.NOT_PLACED),
     "quantity_unavailable": (OutOfStockError, OrderRefusalOutcome.NOT_PLACED),
@@ -153,3 +162,54 @@ def test_retry_after_accepts_decimal_seconds_by_value(value: str, expected: int 
     """Accept digit-only seconds by numeric value, including leading zeros, within signed 32-bit bounds."""
     delay = parse_retry_after(value)
     assert delay == (timedelta(seconds=expected) if expected is not None else None)
+
+
+@pytest.mark.parametrize(
+    ("raw_code", "status", "guidance"),
+    [
+        ("meter_rejected", 422, "Correct the meter number and use a new Idempotency-Key for a new attempt."),
+        ("package_unavailable", 409, "Choose an available package and use a new Idempotency-Key."),
+        ("direct_recharge_product_unavailable", 409, "Choose an available transfer priced for this wallet tier."),
+        ("amount_out_of_range", 422, "Choose an amount within the quoted limits."),
+        (
+            "direct_recharge_not_suspended",
+            409,
+            "Read the direct recharge; recipient changes require suspendedDataError.",
+        ),
+        (
+            "webhook_endpoint_invalid",
+            422,
+            "Use HTTPS on port 443 with a host name, no user-info or fragment, and at most 2048 characters.",
+        ),
+        (
+            "webhook_endpoint_unverified",
+            409,
+            "Set an endpoint and complete its verification before testing or redelivering.",
+        ),
+    ],
+)
+def test_product_error_metadata_and_actual_status_are_preserved(raw_code: str, status: int, guidance: str) -> None:
+    from anis_partners import HTTP_STATUS, RETRY_GUIDANCE
+
+    error = create_api_error(json.dumps({"code": raw_code, "status": status}).encode(), status, {"Retry-After": "7"})
+    assert type(error) is AnisApiError
+    assert error.code is not ErrorCode.UNKNOWN
+    assert error.raw_code == raw_code
+    assert error.status == status
+    assert HTTP_STATUS[error.code] == status
+    assert RETRY_GUIDANCE[error.code] == guidance
+    assert error.retry_after == timedelta(seconds=7)
+    assert not error.is_retryable
+
+
+@pytest.mark.parametrize("status", [403, 409])
+def test_purchase_not_allowed_keeps_the_received_status(status: int) -> None:
+    error = create_api_error(json.dumps({"code": "purchase_not_allowed", "status": status}).encode(), status, {})
+    assert error.status == status
+    assert isinstance(error, AuthorizationError)
+
+
+@pytest.mark.parametrize("extra", [{}, {"extensions": None}, {"extensions": {"other": "retained"}}])
+def test_recipient_errors_preserve_absent_and_unknown_extensions(extra: dict[str, object]) -> None:
+    error = create_api_error(json.dumps({"code": "validation_failed", **extra}).encode(), 422, {})
+    assert error.problem.extensions == extra.get("extensions")

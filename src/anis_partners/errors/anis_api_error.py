@@ -134,7 +134,7 @@ class ResourceNotFoundError(AnisApiError):
 
 
 class ValidationFailedError(AnisApiError):
-    """Validation refusals do not identify fields, preventing resource and price probing."""
+    """Validation refusals retain safe recipient field messages in problem extensions."""
 
 
 class DependencyUnavailableError(AnisApiError):

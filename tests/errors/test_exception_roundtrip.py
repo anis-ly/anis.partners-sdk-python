@@ -126,3 +126,31 @@ def test_unknown_order_cause_survives_asdict() -> None:
 
     assert isinstance(copied, DependencyUnavailableError)
     assert copied.raw_code == "price_changed"
+
+
+@pytest.mark.parametrize(
+    ("code", "status"),
+    [
+        ("meter_rejected", 422),
+        ("package_unavailable", 409),
+        ("direct_recharge_product_unavailable", 409),
+        ("amount_out_of_range", 422),
+        ("direct_recharge_not_suspended", 409),
+        ("webhook_endpoint_invalid", 422),
+        ("webhook_endpoint_unverified", 409),
+    ],
+)
+def test_product_refusals_preserve_extensions_when_journaled(code: str, status: int) -> None:
+    from anis_partners import ErrorCode, create_api_error
+    from tests.support.products import problem
+
+    extensions = {"fields": {"recipient_number": "رقم غير صحيح"}, "future": "retained"}
+    error = create_api_error(problem(code, status, extensions=extensions).body, status, {"Retry-After": "7"})
+    for rebuilt in (copy.copy(error), copy.deepcopy(error), _pickle_round_trip(error)):
+        assert isinstance(rebuilt, AnisApiError)
+        assert rebuilt.code is not ErrorCode.UNKNOWN
+        assert rebuilt.status == status
+        assert rebuilt.raw_code == code
+        assert rebuilt.problem.extensions == extensions
+        assert rebuilt.retry_after == timedelta(seconds=7)
+        assert "رقم غير صحيح" not in repr(rebuilt.problem)

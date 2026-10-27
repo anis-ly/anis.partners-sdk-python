@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import Awaitable, Callable
 from datetime import timedelta
 from typing import Any, cast
@@ -19,17 +20,21 @@ from anis_partners import (
     AsyncAnisPartnersClient,
     AuthorizationError,
     ClientOptions,
+    DirectRechargeAmountIn,
     OrderOutcomeUnknown,
     PartnerRoute,
     RateLimitedError,
     ResourceNotFoundError,
     ResponseVerificationFailure,
+    SetWebhookEndpointRequest,
     UnverifiableResponseError,
+    UpdateDirectRechargeRecipientRequest,
 )
 from anis_partners.operations.transport import RequestSpec
 from anis_partners.signing.signature_profile import SignatureProfile
 from tests.support.partner import CARD_SOLD, OPERATION, SIGNER, WALLET
 from tests.support.partner import order as _order
+from tests.support.products import meter_request, recharge_request
 from tests.support.sdk_wire import SignedMockWire, WireAnswer
 
 KEY_DOCUMENT = "/.well-known/partner-signing-keys.json"
@@ -40,6 +45,14 @@ TOKEN = "-".join(("enrollment", "test", "token"))
 
 #: The gateway's published lists (anis.partners-consumers-gateway README "Response signing"), written out here.
 SIGNED_ROUTES = {
+    ("POST", "/v1/wallets/{walletId}/meter-charges"),
+    ("GET", "/v1/meter-charges/{operationId}"),
+    ("POST", "/v1/wallets/{walletId}/direct-recharges"),
+    ("GET", "/v1/direct-recharges/{operationId}"),
+    ("PATCH", "/v1/direct-recharges/{operationId}/recipient"),
+    ("PUT", "/v1/webhook-endpoint"),
+    ("POST", "/v1/webhook-endpoint/test"),
+    ("POST", "/v1/webhook-events/{eventId}/redeliver"),
     ("POST", "/v1/application/suspend"),
     ("POST", "/v1/keys/{keyId}/revoke"),
     ("POST", "/v1/wallets/{walletId}/orders"),
@@ -53,6 +66,15 @@ SIGNED_ROUTES = {
     ("POST", "/v1/diagnostics/signature"),
 }
 UNSIGNED_ROUTES = {
+    ("GET", "/v1/wallets/{walletId}/meter-packages"),
+    ("GET", "/v1/wallets/{walletId}/meter-charges"),
+    ("GET", "/v1/wallets/{walletId}/direct-recharge-products"),
+    ("GET", "/v1/wallets/{walletId}/direct-recharge-products/{productId}"),
+    ("GET", "/v1/wallets/{walletId}/direct-recharge-products/{productId}/locations"),
+    ("GET", "/v1/wallets/{walletId}/direct-recharge-products/{productId}/quote"),
+    ("GET", "/v1/wallets/{walletId}/direct-recharges"),
+    ("GET", "/v1/webhook-endpoint"),
+    ("GET", "/v1/webhook-events"),
     ("GET", "/v1/wallets/{walletId}/catalog/cards/{cardId}"),
     ("GET", "/v1/profile"),
     ("GET", "/v1/wallets"),
@@ -116,6 +138,72 @@ INFORMATION_CALLS: list[tuple[str, Call, bytes]] = [
         _MASKED_CARD,
     ),
 ]
+INFORMATION_CALLS.extend(
+    [
+        (
+            f"/v1/wallets/{WALLET}/meter-packages",
+            lambda client: client.meter_charges.get_meter_packages_page(WALLET),
+            _PAGE,
+        ),
+        (
+            f"/v1/wallets/{WALLET}/meter-charges",
+            lambda client: client.meter_charges.get_meter_charges_page(WALLET),
+            _PAGE,
+        ),
+        (
+            f"/v1/wallets/{WALLET}/direct-recharge-products",
+            lambda client: client.direct_recharge_products.get_direct_recharge_products_page(WALLET),
+            _PAGE,
+        ),
+        (
+            f"/v1/wallets/{WALLET}/direct-recharge-products/{CARD_SOLD}",
+            lambda client: client.direct_recharge_products.get(WALLET, CARD_SOLD),
+            json.dumps(
+                {
+                    "id": str(CARD_SOLD),
+                    "title": "Product",
+                    "type": "external",
+                    "available": False,
+                    "payoutCurrency": {"name": "Currency"},
+                    "recipientFields": [],
+                }
+            ).encode(),
+        ),
+        (
+            f"/v1/wallets/{WALLET}/direct-recharge-products/{CARD_SOLD}/locations",
+            lambda client: client.direct_recharge_products.get_direct_recharge_product_locations_page(
+                WALLET, CARD_SOLD
+            ),
+            _PAGE,
+        ),
+        (
+            f"/v1/wallets/{WALLET}/direct-recharge-products/{CARD_SOLD}/quote",
+            lambda client: client.direct_recharge_products.quote(WALLET, CARD_SOLD, "1.000", DirectRechargeAmountIn.FX),
+            json.dumps(
+                {
+                    "productId": str(CARD_SOLD),
+                    "payout": {"amount": "1.000", "currency": {"name": "Currency"}},
+                    "exchangeRate": "0.155000",
+                    "price": {"amount": "1.000", "currency": "LYD"},
+                    "commission": {"amount": "0.000", "currency": "LYD"},
+                    "total": {"amount": "1.000", "currency": "LYD"},
+                }
+            ).encode(),
+        ),
+        (
+            f"/v1/wallets/{WALLET}/direct-recharges",
+            lambda client: client.direct_recharges.get_direct_recharges_page(WALLET),
+            _PAGE,
+        ),
+        (
+            "/v1/webhook-endpoint",
+            lambda client: client.webhook_endpoint.get(),
+            b'{"url":null,"status":"notConfigured","generation":null}',
+        ),
+        ("/v1/webhook-events", lambda client: client.webhook_events.get_webhook_events_page(), _PAGE),
+    ]
+)
+
 _INFORMATION_IDS = [path for path, _, _ in INFORMATION_CALLS]
 
 #: Signed partner reads and mutations whose answers must verify; the order is covered separately below.
@@ -133,6 +221,25 @@ SIGNED_CALLS: list[tuple[str, Call]] = [
     ),
     ("/v1/diagnostics/signature", lambda client: client.diagnostics.check_signature()),
 ]
+SIGNED_CALLS.extend(
+    [
+        (f"/v1/meter-charges/{OPERATION}", lambda client: client.meter_charges.get(OPERATION)),
+        (f"/v1/direct-recharges/{OPERATION}", lambda client: client.direct_recharges.get(OPERATION)),
+        (
+            f"/v1/direct-recharges/{OPERATION}/recipient",
+            lambda client: client.direct_recharges.update_recipient(
+                OPERATION, UpdateDirectRechargeRecipientRequest(recharge_request().recipient)
+            ),
+        ),
+        (
+            "/v1/webhook-endpoint",
+            lambda client: client.webhook_endpoint.set(SetWebhookEndpointRequest("https://receiver.test")),
+        ),
+        ("/v1/webhook-endpoint/test", lambda client: client.webhook_endpoint.test()),
+        (f"/v1/webhook-events/{OPERATION}/redeliver", lambda client: client.webhook_events.redeliver(OPERATION)),
+    ]
+)
+
 _SIGNED_IDS = [path for path, _ in SIGNED_CALLS]
 
 #: Unsigned refusals on information routes and the typed error each must still map to.
@@ -391,3 +498,69 @@ async def test_async_unsigned_enrollment_status_is_refused() -> None:
             assert caught.value.failure is ResponseVerificationFailure.SIGNATURE_MISSING
     finally:
         await http.aclose()
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("mode", ["sync", "async"])
+@pytest.mark.parametrize("meter", [True, False])
+@pytest.mark.parametrize("status", [202, 409])
+async def test_new_purchase_answers_without_signatures_remain_unknown(mode: str, meter: bool, status: int) -> None:
+    from anis_partners import DirectRechargeOutcomeUnknown, MeterChargeOutcomeUnknown
+    from tests.support.products import accepted, answer, product_client, resolved
+
+    wire = SignedMockWire(
+        lambda request: answer(
+            accepted(meter) if status == 202 else {"code": "insufficient_balance", "status": 409}, status
+        ),
+        signing="never",
+    )
+    async with product_client(mode, wire) as client:
+        group = client.meter_charges if meter else client.direct_recharges
+        result = await resolved(
+            group.create(
+                wallet_id=WALLET, operation_id=OPERATION, request=meter_request() if meter else recharge_request()
+            )
+        )
+        assert isinstance(result, (MeterChargeOutcomeUnknown, DirectRechargeOutcomeUnknown))
+        assert isinstance(result.cause, UnverifiableResponseError)
+        assert result.cause.failure is ResponseVerificationFailure.SIGNATURE_MISSING
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("mode", ["sync", "async"])
+@pytest.mark.parametrize(("path", "call"), SIGNED_CALLS, ids=_SIGNED_IDS)
+async def test_signed_answers_with_bad_signatures_are_discarded(mode: str, path: str, call: Call) -> None:
+    from tests.support.products import api_requests, product_client, resolved
+
+    wire = SignedMockWire(lambda request: WireAnswer(body=b"{}"))
+    original = wire.handle
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        response = original(request)
+        if request.url.path != KEY_DOCUMENT:
+            response.headers["Signature"] = "sig1=:" + "A" * 86 + "==:"
+        return response
+
+    wire.transport = httpx.MockTransport(handler)
+    async with product_client(mode, wire) as client:
+        with pytest.raises(UnverifiableResponseError):
+            await resolved(call(client))
+    assert len(api_requests(wire)) == 1
+    assert api_requests(wire)[0].url.path == path
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("mode", ["sync", "async"])
+@pytest.mark.parametrize(("path", "call", "body"), INFORMATION_CALLS, ids=_INFORMATION_IDS)
+async def test_each_unsigned_route_maps_refusals_without_key_fetch(
+    mode: str, path: str, call: Call, body: bytes
+) -> None:
+    from tests.support.products import product_client, resolved
+
+    wire = SignedMockWire(lambda request: WireAnswer(422, _problem(422, "validation_failed")), signing="never")
+    async with product_client(mode, wire) as client:
+        with pytest.raises(AnisApiError) as caught:
+            await resolved(call(client))
+        assert caught.value.raw_code == "validation_failed"
+    assert wire.key_document_requests == 0
+    assert _api_paths(wire) == [path]

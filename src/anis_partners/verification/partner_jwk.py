@@ -1,8 +1,9 @@
 """Parse rotating public keys and reject malformed material before it can authenticate a response."""
 
 import json
+import re
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from cryptography.hazmat.primitives.asymmetric import ec
 
@@ -68,10 +69,16 @@ class PartnerJwk:
         ).public_key()
 
 
-def _lifecycle_date(value: object) -> datetime | None:
+def _lifecycle_date(value: object, *, round_up: bool = False) -> datetime | None:
     """Keep invalid lifecycle dates unavailable so the matched key fails with key_rejected."""
     try:
-        return timestamp(value)
+        parsed = timestamp(value)
+        if round_up and parsed is not None and isinstance(value, str):
+            fraction = re.search(r"\.([0-9]+)", value)
+            # Signature creation uses whole seconds; discarded submicrosecond ticks must stay after that second.
+            if fraction is not None and any(digit != "0" for digit in fraction.group(1)[6:]):
+                parsed += timedelta(microseconds=1)
+        return parsed
     except (ValueError, TypeError, OverflowError):
         return None
 
@@ -83,6 +90,8 @@ class PublishedSigningKey(PartnerJwk):
     status: str | None = None
     not_before: datetime | None = None
     retired_at: datetime | None = None
+    #: Names the signing role (answer or webhook) so one role's key cannot authenticate the other's traffic.
+    purpose: str | None = None
 
     @classmethod
     def from_json(cls, data: object) -> "PublishedSigningKey":
@@ -91,9 +100,13 @@ class PublishedSigningKey(PartnerJwk):
         jwk = PartnerJwk.from_json(value)
         raw_status = value.get("status")
         status = raw_status if isinstance(raw_status, str) else None
-        not_before = _lifecycle_date(value.get("notBefore"))
+        not_before = _lifecycle_date(value.get("notBefore"), round_up=True)
         retired_at = _lifecycle_date(value.get("retiredAt"))
-        return cls(jwk.kty, jwk.crv, jwk.x, jwk.y, jwk.kid, jwk.use, jwk.alg, jwk.d, status, not_before, retired_at)
+        raw_purpose = value.get("purpose")
+        purpose = raw_purpose if isinstance(raw_purpose, str) else None
+        return cls(
+            jwk.kty, jwk.crv, jwk.x, jwk.y, jwk.kid, jwk.use, jwk.alg, jwk.d, status, not_before, retired_at, purpose
+        )
 
     def to_json(self) -> dict[str, object]:
         """Preserve lifecycle metadata when a published key is serialized."""
@@ -106,6 +119,8 @@ class PublishedSigningKey(PartnerJwk):
             value["notBefore"] = wire_timestamp(self.not_before)
         if self.retired_at is not None:
             value["retiredAt"] = wire_timestamp(self.retired_at)
+        if self.purpose is not None:
+            value["purpose"] = self.purpose
         return value
 
 

@@ -368,7 +368,7 @@ async def test_any_published_key_used_before_not_before_is_not_yet_valid_in_both
 
 
 @pytest.mark.parametrize("status", ["active", "next", "retired"])
-@pytest.mark.parametrize("fraction", ["0000", "0001"])
+@pytest.mark.parametrize("fraction", ["0000", "0001", "0000000", "0000001"])
 @pytest.mark.anyio
 async def test_fractional_not_before_requires_the_next_whole_created_second_in_both_verifiers(
     status: str, fraction: str, monkeypatch: pytest.MonkeyPatch
@@ -400,7 +400,7 @@ async def test_fractional_not_before_requires_the_next_whole_created_second_in_b
     assert datetime.fromtimestamp(created, UTC) == datetime(2026, 10, 12, 12, tzinfo=UTC)
     sync = PartnerResponseVerifier(RotatingKeys(keys, keys), FixedClock(created))
     async_verifier = AsyncPartnerResponseVerifier(AsyncStaticKeys(keys), FixedClock(created))
-    if fraction == "0000":
+    if int(fraction) == 0:
         sync.verify(response)
         await async_verifier.verify(response)
     else:
@@ -525,3 +525,80 @@ def test_host_key_source_cannot_bypass_lifecycle_validation_with_a_naive_datetim
     with pytest.raises(UnverifiableResponseError) as caught:
         PartnerResponseVerifier(RotatingKeys(keys, keys), FixedClock(vector["verifyAt"])).verify(response)
     assert caught.value.failure is ResponseVerificationFailure.KEY_REJECTED
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("purpose", [None, "answer"], ids=["legacy-omitted", "emitted-answer"])
+async def test_optional_purpose_preserves_answer_verification_and_key_round_trip(purpose: str | None) -> None:
+    from anis_partners.verification.partner_response_verifier import AsyncPartnerResponseVerifier
+    from tests.conformance.test_response_vectors import AsyncStaticKeys
+
+    vector = response_fixture()
+    for item in vector["signingKeys"]["keys"]:
+        if purpose is None:
+            item.pop("purpose", None)
+        else:
+            item["purpose"] = purpose
+    keys = SigningKeySet.from_json(json.dumps(vector["signingKeys"]))
+    assert all(key.purpose == purpose for key in keys.keys)
+    serialized = [key.to_json() for key in keys.keys]
+    assert all(("purpose" not in key if purpose is None else key["purpose"] == purpose) for key in serialized)
+    restored = SigningKeySet.from_json(json.dumps({"keys": serialized}))
+    assert restored == keys
+    response = VerifiableResponse(
+        200, vector["response"]["headers"], b"{}", vector["request"]["signatureInput"], vector["request"]["signature"]
+    )
+    sync_keys = RotatingKeys(restored, restored)
+    async_keys = AsyncStaticKeys(restored)
+    PartnerResponseVerifier(sync_keys, FixedClock(vector["verifyAt"])).verify(response)
+    await AsyncPartnerResponseVerifier(async_keys, FixedClock(vector["verifyAt"])).verify(response)
+    assert sync_keys.refresh_count == async_keys.refresh_calls == 0
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("purpose", ["webhook", "", "Answer"], ids=["webhook", "empty", "wrong-case"])
+async def test_key_published_for_another_purpose_cannot_verify_an_api_answer(purpose: str) -> None:
+    from anis_partners.verification.partner_response_verifier import AsyncPartnerResponseVerifier
+    from tests.conformance.test_response_vectors import AsyncStaticKeys
+
+    vector = response_fixture()
+    for item in vector["signingKeys"]["keys"]:
+        item["purpose"] = purpose
+    keys = SigningKeySet.from_json(json.dumps(vector["signingKeys"]))
+    response = VerifiableResponse(
+        200, vector["response"]["headers"], b"{}", vector["request"]["signatureInput"], vector["request"]["signature"]
+    )
+    sync_keys = RotatingKeys(keys, keys)
+    async_keys = AsyncStaticKeys(keys)
+    with pytest.raises(UnverifiableResponseError) as caught:
+        PartnerResponseVerifier(sync_keys, FixedClock(vector["verifyAt"])).verify(response)
+    assert caught.value.failure is ResponseVerificationFailure.KEY_REJECTED
+    with pytest.raises(UnverifiableResponseError) as caught:
+        await AsyncPartnerResponseVerifier(async_keys, FixedClock(vector["verifyAt"])).verify(response)
+    assert caught.value.failure is ResponseVerificationFailure.KEY_REJECTED
+    assert sync_keys.refresh_count == async_keys.refresh_calls == 0
+
+
+@pytest.mark.anyio
+async def test_submicrosecond_retirement_does_not_extend_the_retired_key_window() -> None:
+    from anis_partners.verification.partner_response_verifier import AsyncPartnerResponseVerifier
+    from tests.conformance.test_response_vectors import AsyncStaticKeys
+
+    vector = response_fixture()
+    created = int(vector["response"]["headers"]["Signature-Input"].split(";created=")[1].split(";")[0])
+    document = vector["signingKeys"]
+    key = document["keys"][0]
+    key["status"] = "retired"
+    key["retiredAt"] = datetime.fromtimestamp(created - 1, UTC).strftime("%Y-%m-%dT%H:%M:%S") + ".9999999Z"
+    keys = SigningKeySet.from_json(json.dumps(document))
+    assert keys.keys[0].retired_at is not None
+    assert keys.keys[0].retired_at.microsecond == 999999
+    response = VerifiableResponse(
+        200, vector["response"]["headers"], b"{}", vector["request"]["signatureInput"], vector["request"]["signature"]
+    )
+    with pytest.raises(UnverifiableResponseError) as caught:
+        PartnerResponseVerifier(RotatingKeys(keys, keys), FixedClock(vector["verifyAt"])).verify(response)
+    assert caught.value.failure is ResponseVerificationFailure.KEY_RETIRED
+    with pytest.raises(UnverifiableResponseError) as caught:
+        await AsyncPartnerResponseVerifier(AsyncStaticKeys(keys), FixedClock(vector["verifyAt"])).verify(response)
+    assert caught.value.failure is ResponseVerificationFailure.KEY_RETIRED

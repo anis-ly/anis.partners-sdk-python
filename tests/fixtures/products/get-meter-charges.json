@@ -1,0 +1,22 @@
+{
+  "items": [
+    {
+      "operationId": "3c1e9b7a-0d42-4f5e-8a61-2b9c7d0e5f13",
+      "status": "succeeded",
+      "meterNumber": "0268000710262",
+      "package": {
+        "id": "5f3b8c21-7a0d-4e96-b1c4-2d8e6f9a0b37",
+        "name": "باقة 100 دينار",
+        "gecolPackageName": "PKG_100"
+      },
+      "total": {
+        "amount": "97.500",
+        "currency": "LYD"
+      },
+      "externalReference": "POS-77-INV-1093",
+      "createdAt": "2026-10-20T08:12:44Z",
+      "completedAt": "2026-10-20T08:13:02Z"
+    }
+  ],
+  "nextCursor": null
+}

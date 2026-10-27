@@ -1,4 +1,4 @@
-# Anis Partners for Python 2.1.0
+# Anis Partners for Python 2.2.0
 
 The Python client for the Anis Partner API. It signs every request, verifies every answer Anis signs, and gives each operation a typed result. The details that can cause duplicate purchases or expose unverified credentials are handled explicitly: caller-owned order ids, recovery outcomes, and response verification have no silent shortcuts.
 
@@ -10,13 +10,14 @@ The Python client for the Anis Partner API. It signs every request, verifies eve
 > https://developers.anis.ly.
 
 ```bash
-pip install anis-partners==2.1.0
+pip install anis-partners==2.2.0
 # or
-uv add anis-partners==2.1.0
+uv add anis-partners==2.2.0
 ```
 
 - [Getting started](https://github.com/anis-ly/anis.partners-sdk-python/blob/main/docs/getting-started.md) — enrollment, configuration, first call, sync and async use
 - [Orders and recovery](https://github.com/anis-ly/anis.partners-sdk-python/blob/main/docs/orders-and-recovery.md) — read before placing an order
+- [Webhooks](https://github.com/anis-ly/anis.partners-sdk-python/blob/main/docs/webhooks.md) — set the endpoint, verify every notification, and request delivery again
 - [Routes and permissions](https://github.com/anis-ly/anis.partners-sdk-python/blob/main/docs/routes-and-permissions.md) — routes, permissions, bodies, and limits
 - [Errors](https://github.com/anis-ly/anis.partners-sdk-python/blob/main/docs/errors.md) — stable error codes and typed exceptions
 - [Security and key custody](https://github.com/anis-ly/anis.partners-sdk-python/blob/main/docs/security.md)
@@ -65,19 +66,27 @@ if __name__ == "__main__":
 
 For order creation and recovery, persist the operation id and exact request before calling the SDK. See [Orders and recovery](https://github.com/anis-ly/anis.partners-sdk-python/blob/main/docs/orders-and-recovery.md) for the complete outcome rules.
 
+## Meter charges, direct recharges and notifications
+
+- **Meter charges.** `anis.meter_charges` lists packages (`get_meter_packages`) and charges (`get_meter_charges`), creates a charge under your own operation id, and reads the receipt, tokens, taxes and refund state. A lost answer is recovered with `resume` using the same id and body. `idempotency_conflict` on a create or resume is an unknown outcome (the charge may already be placed), never "not placed": read the operation with `get` first. `get` of an operation closed with a recorded refusal raises the typed error with `is_replayed` set. A failed charge whose refund is still `pending` is not final.
+- **Direct recharge.** `anis.direct_recharge_products` lists products, shows their recipient fields and locations, and quotes a payout in LYD or in the foreign amount. `anis.direct_recharges` creates, resumes and reads a direct recharge, and `update_recipient` corrects the recipient while the direct recharge is paused (`suspendedDataError`). It returns the same `DirectRechargeProcessing` result as a 202 create, with the `DirectRechargeAccepted` body in `recharge` and the signed `location` header on the result, without a direct recharge body. Read the operation later or wait for its webhook.
+- **Notifications.** `anis.webhook_endpoint` sets, reads and tests your endpoint; `anis.webhook_events` lists deliveries and asks for one again. `PartnerWebhookVerifier` checks the signature, your URL and your application over the raw bytes before anything is read. See [Webhooks](docs/webhooks.md).
+
+Creating a meter charge or a direct recharge uses the same rules as an order: persist the operation id and exact request first, and resume with the same id. Changing the endpoint, correcting a recipient, sending a test and asking for redelivery are signed changes that are never retried automatically.
+
 ## Refusals built into the design
 
 The caller supplies the order id. A dropped answer followed by a new id could buy twice, so the SDK never invents this identity. The five order result types distinguish a completed sale, processing, a replay, a definitive refusal, and an unknown outcome. Only the first completion returns credentials; a replay never repeats them.
 
 An unknown result means the original sale may have completed. Resume with the same id and body. A new purchase uses a new id only after a definitive `OrderNotPlaced` result and a changed intent.
 
-Anis signs the answers that move money, deliver card codes, or establish a key: order creation and order reads, both reveals, application suspension, key revocation, the four enrollment routes, and the signature self-test. On those routes every answer, success or refusal, is verified, and verification cannot be disabled. If such an answer cannot be verified — including one that arrives with no signature — its body is discarded and `UnverifiableResponseError` is raised. An unverifiable order answer is `OrderOutcomeUnknown`, because the sale may already have completed.
+Anis signs the answers that move money, deliver card codes, or establish a key: order, meter charge and direct recharge creation and reads, recipient corrections, webhook endpoint changes, both reveals, application suspension, key revocation, the four enrollment routes, and the signature self-test. On those routes every answer, success or refusal, is verified, and verification cannot be disabled. If such an answer cannot be verified — including one that arrives with no signature — its body is discarded and `UnverifiableResponseError` is raised. An unverifiable order answer is `OrderOutcomeUnknown`, because the sale may already have completed.
 
 The information reads — profile, wallets, the catalogue, and the owned-card list and read — are answered unsigned and read without verification. Which routes are signed is fixed per route in the SDK (`PartnerRoute.signs_response` in `PARTNER_ROUTES`); it is never decided by whether an answer happens to carry a signature. See [Routes and permissions](https://github.com/anis-ly/anis.partners-sdk-python/blob/main/docs/routes-and-permissions.md).
 
 ## What is covered
 
-The SDK covers all 22 published routes across `access`, `profile`, `wallets`, `catalogue`, `orders`, `owned_cards`, and `diagnostics`, plus the enrollment client. Public errors are generated from the error catalogue. Request, response, safety-code, and enrollment vectors are tested along with signed in-memory client flows and contract drift checks.
+The SDK covers every partner route except `/v1/application/networks*` (Staging only — testing endpoints, not available in production / بيئة الاختبار فقط — نقاط نهاية للاختبار، غير متاحة في الإنتاج), across `access`, `profile`, `wallets`, `catalogue`, `orders`, `owned_cards`, `diagnostics`, `meter_charges`, `direct_recharge_products`, `direct_recharges`, `webhook_endpoint` and `webhook_events`, plus the enrollment client. Public errors are generated from the error catalogue. Request, response, webhook, safety-code, and enrollment vectors are tested along with signed in-memory client flows and contract drift checks.
 
 This package follows the published Partner SDK contract. Supported Python versions are 3.11–3.14.
 
@@ -107,4 +116,4 @@ Use `anis.catalogue.get_card(wallet_id, card_id)` for one wallet-priced catalogu
 
 Self-service stops return signed state: `anis.access.suspend_application(reason)` and `anis.access.revoke_key(key_id, reason)`. Reasons are required and trimmed to 1–500 characters. Resume is staff-only; a revoked key never works again. Both stop calls use a fresh nonce and a body digest without an idempotency key.
 
-1.x is deprecated — upgrade to 2.1.0.
+1.x is deprecated — upgrade to 2.2.0.

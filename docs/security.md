@@ -25,6 +25,10 @@ The information reads (profile, wallets, the five catalogue reads, and the owned
 
 The default signature lifetime is 60 seconds and the supported setting is 1–60 seconds. Use an accurate UTC system clock. The server's request admission window is wider, but accepting an old response can lose credentials after a sale; the SDK keeps its response freshness window bounded. Plain HTTP is permitted only for loopback testing; use HTTPS for every network authority.
 
+## Notifications
+
+Anis signs every notification with a separate key published for that purpose (`purpose` is `webhook`). Verify the delivery over the exact raw bytes before reading any of it, using your own configured URL and application id; see [Webhooks](webhooks.md). The notification profile is independent of the response profile above: it has its own tag (`anis-partner-webhook-v1`), a fixed 300-second lifetime, and it refuses a retired key even when the signature predates the retirement.
+
 ## Enrollment
 
 Protect the private half before submitting a public key. After proof, an Anis staff member checks the derived safety code by phone and activates the key. Enrollment tokens are secrets; do not log them or include them in support requests. Read status and confirm `active` before using the key for partner calls.
@@ -44,3 +48,5 @@ The verifier requires `tag="anis-response-v2"` and rebuilds this exact order: `"
 The HTTPS key document carries `keys[]` with `status`, `notBefore`, and `retiredAt` for retired keys, plus `revoked[]` with `kid` and `compromisedAt`. A revoked version fails as `key_compromised`, regardless of creation time. A retired version fails as `key_retired` when signature creation is after `retiredAt`. Any published version (`active`, `next` or `retired`) fails as `key_not_yet_valid` when creation is before its `notBefore`. Missing or different tags fail as `profile_unexpected`; a different component list fails as `covered_components_mismatch`.
 
 Anis keeps a retired key in the document for 90 days after it retires and a compromised key id in `revoked[]` for 90 days, so stored answers can still be checked during a dispute.
+
+The published key schema keeps `purpose` optional for compatibility; Anis always emits it. The SDK accepts legacy answer keys without it, while webhook verification still requires `purpose: webhook`. During a webhook-key outage, the key document keeps serving answer keys and omits only webhook keys, so answer verification remains available.

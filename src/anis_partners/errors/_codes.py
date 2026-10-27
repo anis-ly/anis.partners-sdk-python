@@ -9,6 +9,7 @@ class ErrorCode(StrEnum):
     UNKNOWN = "unknown"
     ACCOUNT_INACTIVE = "account_inactive"
     ALLOWED_DEBT_CONSENT_REQUIRED = "allowed_debt_consent_required"
+    AMOUNT_OUT_OF_RANGE = "amount_out_of_range"
     BINDING_NOT_AUTHORIZED = "binding_not_authorized"
     BUSINESS_SUBSCRIPTION_REQUIRED = "business_subscription_required"
     CARD_NOT_FOUND = "card_not_found"
@@ -17,6 +18,8 @@ class ErrorCode(StrEnum):
     CURRENCY_NOT_SUPPORTED = "currency_not_supported"
     DAILY_LIMIT_EXCEEDED = "daily_limit_exceeded"
     DEPENDENCY_UNAVAILABLE = "dependency_unavailable"
+    DIRECT_RECHARGE_NOT_SUSPENDED = "direct_recharge_not_suspended"
+    DIRECT_RECHARGE_PRODUCT_UNAVAILABLE = "direct_recharge_product_unavailable"
     IDEMPOTENCY_CONFLICT = "idempotency_conflict"
     INSUFFICIENT_BALANCE = "insufficient_balance"
     INSUFFICIENT_SCOPE = "insufficient_scope"
@@ -29,8 +32,12 @@ class ErrorCode(StrEnum):
     KEY_NOT_REVOCABLE = "key_not_revocable"
     KEY_PROOF_INVALID = "key_proof_invalid"
     MALFORMED_SIGNED_REQUEST = "malformed_signed_request"
+    METER_REJECTED = "meter_rejected"
+    NETWORK_NOT_REMOVABLE = "network_not_removable"
     OPERATION_PROCESSING = "operation_processing"
     OWNER_LIMIT_EXCEEDED = "owner_limit_exceeded"
+    PACKAGE_UNAVAILABLE = "package_unavailable"
+    PARTNER_NETWORK_LIMIT_REACHED = "partner_network_limit_reached"
     PRICE_CHANGED = "price_changed"
     PURCHASE_NOT_ALLOWED = "purchase_not_allowed"
     QUANTITY_UNAVAILABLE = "quantity_unavailable"
@@ -46,11 +53,14 @@ class ErrorCode(StrEnum):
     WALLET_DISABLED = "wallet_disabled"
     WALLET_EXPIRED = "wallet_expired"
     WALLET_NOT_GRANTED = "wallet_not_granted"
+    WEBHOOK_ENDPOINT_INVALID = "webhook_endpoint_invalid"
+    WEBHOOK_ENDPOINT_UNVERIFIED = "webhook_endpoint_unverified"
 
 
 HTTP_STATUS: dict[ErrorCode, int] = {
     ErrorCode.ACCOUNT_INACTIVE: 403,
     ErrorCode.ALLOWED_DEBT_CONSENT_REQUIRED: 402,
+    ErrorCode.AMOUNT_OUT_OF_RANGE: 422,
     ErrorCode.BINDING_NOT_AUTHORIZED: 403,
     ErrorCode.BUSINESS_SUBSCRIPTION_REQUIRED: 409,
     ErrorCode.CARD_NOT_FOUND: 404,
@@ -59,6 +69,8 @@ HTTP_STATUS: dict[ErrorCode, int] = {
     ErrorCode.CURRENCY_NOT_SUPPORTED: 422,
     ErrorCode.DAILY_LIMIT_EXCEEDED: 429,
     ErrorCode.DEPENDENCY_UNAVAILABLE: 503,
+    ErrorCode.DIRECT_RECHARGE_NOT_SUSPENDED: 409,
+    ErrorCode.DIRECT_RECHARGE_PRODUCT_UNAVAILABLE: 409,
     ErrorCode.IDEMPOTENCY_CONFLICT: 409,
     ErrorCode.INSUFFICIENT_BALANCE: 409,
     ErrorCode.INSUFFICIENT_SCOPE: 403,
@@ -71,8 +83,12 @@ HTTP_STATUS: dict[ErrorCode, int] = {
     ErrorCode.KEY_NOT_REVOCABLE: 409,
     ErrorCode.KEY_PROOF_INVALID: 422,
     ErrorCode.MALFORMED_SIGNED_REQUEST: 400,
+    ErrorCode.METER_REJECTED: 422,
+    ErrorCode.NETWORK_NOT_REMOVABLE: 409,
     ErrorCode.OPERATION_PROCESSING: 202,
     ErrorCode.OWNER_LIMIT_EXCEEDED: 409,
+    ErrorCode.PACKAGE_UNAVAILABLE: 409,
+    ErrorCode.PARTNER_NETWORK_LIMIT_REACHED: 409,
     ErrorCode.PRICE_CHANGED: 409,
     ErrorCode.PURCHASE_NOT_ALLOWED: 409,
     ErrorCode.QUANTITY_UNAVAILABLE: 409,
@@ -88,6 +104,8 @@ HTTP_STATUS: dict[ErrorCode, int] = {
     ErrorCode.WALLET_DISABLED: 409,
     ErrorCode.WALLET_EXPIRED: 409,
     ErrorCode.WALLET_NOT_GRANTED: 404,
+    ErrorCode.WEBHOOK_ENDPOINT_INVALID: 422,
+    ErrorCode.WEBHOOK_ENDPOINT_UNVERIFIED: 409,
 }
 
 
@@ -99,6 +117,7 @@ RETRY_GUIDANCE: dict[ErrorCode, str] = {
             "consent if the Partner intends to use debt.",
         )
     ),
+    ErrorCode.AMOUNT_OUT_OF_RANGE: "Choose an amount within the quoted limits.",
     ErrorCode.BINDING_NOT_AUTHORIZED: "".join(
         (
             "Restore the directly owned active account and Busi",
@@ -134,10 +153,20 @@ RETRY_GUIDANCE: dict[ErrorCode, str] = {
             "utation intent after bounded backoff.",
         )
     ),
+    ErrorCode.DIRECT_RECHARGE_NOT_SUSPENDED: "Read the direct recharge; recipient changes require suspendedDataError.",
+    ErrorCode.DIRECT_RECHARGE_PRODUCT_UNAVAILABLE: "Choose an available transfer priced for this wallet tier.",
     ErrorCode.IDEMPOTENCY_CONFLICT: "".join(
         (
-            "Reuse the key only for identical intent; use a new",
-            " UUID only for a genuinely new operation.",
+            "Reuse the key only for identical intent. This code",
+            " does not say the original request failed: it may ",
+            "already have been accepted and charged, so never a",
+            "ssume nothing was charged; read the original opera",
+            "tion by its id (the meter charge or the direct rec",
+            "harge) before any new attempt. A repeated create w",
+            "hose id is still unknown to this application a min",
+            "ute after it was admitted also closes as idempoten",
+            "cy_conflict (409); use a new UUID only for a genui",
+            "nely new operation.",
         )
     ),
     ErrorCode.INSUFFICIENT_BALANCE: "".join(
@@ -202,12 +231,19 @@ RETRY_GUIDANCE: dict[ErrorCode, str] = {
             "unchanged fails the same way.",
         )
     ),
+    ErrorCode.METER_REJECTED: "Correct the meter number and use a new Idempotency-Key for a new attempt.",
+    ErrorCode.NETWORK_NOT_REMOVABLE: "".join(
+        (
+            "Anis added this network, so only Anis can remove i",
+            "t, or it is the last network the application has. ",
+            "Contact Anis support to change it.",
+        )
+    ),
     ErrorCode.OPERATION_PROCESSING: "".join(
         (
-            "Not an error: the order was accepted and is still ",
-            "being processed. Wait for the Retry-After delay, t",
-            "hen repeat the identical POST with the same Idempo",
-            "tency-Key.",
+            "Not an error: the operation is still processing. R",
+            "espect Retry-After; read its Location or repeat th",
+            "e identical create with the same Idempotency-Key.",
         )
     ),
     ErrorCode.OWNER_LIMIT_EXCEEDED: "".join(
@@ -215,6 +251,14 @@ RETRY_GUIDANCE: dict[ErrorCode, str] = {
             "Do not poll; submit a new operation and idempotenc",
             "y key only after the owner allowance is known to h",
             "ave changed.",
+        )
+    ),
+    ErrorCode.PACKAGE_UNAVAILABLE: "Choose an available package and use a new Idempotency-Key.",
+    ErrorCode.PARTNER_NETWORK_LIMIT_REACHED: "".join(
+        (
+            "The application already has the most addresses a P",
+            "artner may add. Remove one you added, or ask Anis ",
+            "to allow the network.",
         )
     ),
     ErrorCode.PRICE_CHANGED: "Refresh the current price and explicitly accept it in a new operation.",
@@ -270,26 +314,23 @@ RETRY_GUIDANCE: dict[ErrorCode, str] = {
     ),
     ErrorCode.SPENDING_LIMIT_EXCEEDED: "".join(
         (
-            "The order was not placed: it would take the applic",
-            "ation's spending above its ceiling for the current",
-            " period. Do not repeat it; after the Retry-After d",
-            "elay (the end of the period) submit a new operatio",
-            "n and idempotency key, or ask Anis staff to change",
-            " the ceiling.",
+            "The operation was not accepted: it would take the ",
+            "application's spending above its ceiling for the c",
+            "urrent period. Do not repeat it; after the Retry-A",
+            "fter delay (the end of the period) submit a new op",
+            "eration and idempotency key, or ask Anis staff to ",
+            "change the ceiling.",
         )
     ),
     ErrorCode.VALIDATION_FAILED: "".join(
         (
-            "The response never names the field: check the requ",
-            "est against the documented rules before sending it",
-            " again. How the request is sent counts too: a body",
-            " over 64 KB, an order body over 8,192 bytes, an or",
-            "der Content-Type with a charset other than UTF-8, ",
-            "a chunked body (send Content-Length instead), head",
-            "ers over 32 KB in total, a path and query over 2,0",
-            "48 characters, a body on a call that takes none, o",
-            "r an order whose Idempotency-Key is missing or is ",
-            "not a UUID written with hyphens.",
+            "Check the request model and framing. Money-operati",
+            "on creates and recipient updates accept at most 81",
+            "92 UTF-8 body bytes. Recipient validation of a dir",
+            "ect recharge may return safe messages in extension",
+            "s.fields; other validation does not identify field",
+            "s. Preserve the same key for unchanged accepted in",
+            "tent; a corrected business intent needs a new key.",
         )
     ),
     ErrorCode.WALLET_DISABLED: "Submit a new request only after the wallet has been re-enabled.",
@@ -300,6 +341,18 @@ RETRY_GUIDANCE: dict[ErrorCode, str] = {
         )
     ),
     ErrorCode.WALLET_NOT_GRANTED: "Obtain an approved current wallet grant before making a new request.",
+    ErrorCode.WEBHOOK_ENDPOINT_INVALID: "".join(
+        (
+            "Use HTTPS on port 443 with a host name, no user-in",
+            "fo or fragment, and at most 2048 characters.",
+        )
+    ),
+    ErrorCode.WEBHOOK_ENDPOINT_UNVERIFIED: "".join(
+        (
+            "Set an endpoint and complete its verification befo",
+            "re testing or redelivering.",
+        )
+    ),
 }
 
 
@@ -319,6 +372,7 @@ RETRYABLE_CODES: frozenset[ErrorCode] = frozenset(
 _BY_WIRE: dict[str, ErrorCode] = {
     "account_inactive": ErrorCode.ACCOUNT_INACTIVE,
     "allowed_debt_consent_required": ErrorCode.ALLOWED_DEBT_CONSENT_REQUIRED,
+    "amount_out_of_range": ErrorCode.AMOUNT_OUT_OF_RANGE,
     "binding_not_authorized": ErrorCode.BINDING_NOT_AUTHORIZED,
     "business_subscription_required": ErrorCode.BUSINESS_SUBSCRIPTION_REQUIRED,
     "card_not_found": ErrorCode.CARD_NOT_FOUND,
@@ -327,6 +381,8 @@ _BY_WIRE: dict[str, ErrorCode] = {
     "currency_not_supported": ErrorCode.CURRENCY_NOT_SUPPORTED,
     "daily_limit_exceeded": ErrorCode.DAILY_LIMIT_EXCEEDED,
     "dependency_unavailable": ErrorCode.DEPENDENCY_UNAVAILABLE,
+    "direct_recharge_not_suspended": ErrorCode.DIRECT_RECHARGE_NOT_SUSPENDED,
+    "direct_recharge_product_unavailable": ErrorCode.DIRECT_RECHARGE_PRODUCT_UNAVAILABLE,
     "idempotency_conflict": ErrorCode.IDEMPOTENCY_CONFLICT,
     "insufficient_balance": ErrorCode.INSUFFICIENT_BALANCE,
     "insufficient_scope": ErrorCode.INSUFFICIENT_SCOPE,
@@ -339,8 +395,12 @@ _BY_WIRE: dict[str, ErrorCode] = {
     "key_not_revocable": ErrorCode.KEY_NOT_REVOCABLE,
     "key_proof_invalid": ErrorCode.KEY_PROOF_INVALID,
     "malformed_signed_request": ErrorCode.MALFORMED_SIGNED_REQUEST,
+    "meter_rejected": ErrorCode.METER_REJECTED,
+    "network_not_removable": ErrorCode.NETWORK_NOT_REMOVABLE,
     "operation_processing": ErrorCode.OPERATION_PROCESSING,
     "owner_limit_exceeded": ErrorCode.OWNER_LIMIT_EXCEEDED,
+    "package_unavailable": ErrorCode.PACKAGE_UNAVAILABLE,
+    "partner_network_limit_reached": ErrorCode.PARTNER_NETWORK_LIMIT_REACHED,
     "price_changed": ErrorCode.PRICE_CHANGED,
     "purchase_not_allowed": ErrorCode.PURCHASE_NOT_ALLOWED,
     "quantity_unavailable": ErrorCode.QUANTITY_UNAVAILABLE,
@@ -356,6 +416,8 @@ _BY_WIRE: dict[str, ErrorCode] = {
     "wallet_disabled": ErrorCode.WALLET_DISABLED,
     "wallet_expired": ErrorCode.WALLET_EXPIRED,
     "wallet_not_granted": ErrorCode.WALLET_NOT_GRANTED,
+    "webhook_endpoint_invalid": ErrorCode.WEBHOOK_ENDPOINT_INVALID,
+    "webhook_endpoint_unverified": ErrorCode.WEBHOOK_ENDPOINT_UNVERIFIED,
 }
 
 

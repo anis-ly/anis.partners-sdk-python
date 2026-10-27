@@ -1,0 +1,15 @@
+{
+  "webhooks-fixtures/circle-completed/public-read.json": "619dfe94cc4047c1cb518be20be9d2a1b6e1fc4f558c9da179258d577efc289d",
+  "webhooks-fixtures/circle-paid/public-read.json": "5b24554196af287ac57b3b8fdb03bf46b042b79388d81f6ad43fed6d75689f0f",
+  "webhooks-fixtures/circle-partially-refunded/public-read.json": "4f567900709c9171ada8c83ec57c1b898b55e8db262690555265f98110454ef8",
+  "webhooks-fixtures/circle-payment-failed/public-read.json": "240505f2bd0122bfbe87461256196e79e8a378406316e45f290e69cb8200cfe9",
+  "webhooks-fixtures/circle-rejected/public-read.json": "65a7a25d8d58772362bb09928b0975e4e51c4571ef4da895927447cc3a4a4efd",
+  "webhooks-fixtures/circle-suspended/public-read.json": "d5bfe5ca3d876973fd80b2d4633843190a8b3e2c467cdb14b92e0de4ad5fee27",
+  "webhooks-fixtures/circle-suspended-after-recipient-fix/public-read.json": "623d43c0e3a53c9839210fdc730329cd1f2bfce078d545a512d97e4b1838604b",
+  "webhooks-fixtures/meter-failed-not-charged/public-read.json": "f2945dd8bafcfe91fbea08075d4100dcb5932402a08360b4f3d763c6f3a49334",
+  "webhooks-fixtures/meter-failed-pending/public-read.json": "eb0c6c9b69fbb7409259e5878c3e4b17016f1d0ded236001bb33cdf9532da17b",
+  "webhooks-fixtures/meter-failed-refunded/public-read.json": "c254445a89a344c228b6cdb0d39e5c308b0c511a27af257f7a9b0e99f6fda6d8",
+  "webhooks-fixtures/meter-succeeded/public-read.json": "ce96c2fb37760cdc20e9859fc42c1c117ffd7cdf3a2eb07b7e5ded6e69b8f89f",
+  "list-fixtures/direct-recharges.json": "cc0d5de920ffd0de199a97e1b15c2da40881ee7b5d954d1469b5dcda5c84c2d3",
+  "list-fixtures/meter-charges.json": "f3c66f08c1fb3a0b41e7a614887faba6a31caf41ad59625953e0d73caebd4fc0"
+}

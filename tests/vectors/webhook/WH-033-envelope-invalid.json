@@ -1,0 +1,94 @@
+{
+  "id": "WH-033-envelope-invalid",
+  "title": "Cryptographically valid body is not a valid envelope",
+  "description": "Cryptographically valid body is not a valid envelope",
+  "route": "POST https://pos.example.ly/hooks/anis",
+  "profile": "anis-partner-webhook-v1",
+  "verifyAt": 1792484045,
+  "receiver": {
+    "configuredUrl": "https://pos.example.ly/hooks/anis",
+    "applicationId": "9b2d1241-413e-4ae8-ae32-b15c58dbe101"
+  },
+  "request": {
+    "method": "POST",
+    "targetUri": "https://pos.example.ly/hooks/anis",
+    "headers": {
+      "Content-Type": "application/json; charset=utf-8",
+      "Content-Digest": "sha-256=:f7nRZtGhW84LnwhfOBiUb9kpfkUTpKA0oM63SSkrTA0=:",
+      "Signature-Input": "sig1=(\u0022@method\u0022 \u0022@target-uri\u0022 \u0022content-digest\u0022 \u0022webhook-id\u0022 \u0022anis-webhook-attempt\u0022 \u0022anis-application-id\u0022);created=1792484040;expires=1792484340;keyid=\u0022partner-webhook-signing/11111111111111111111111111111111\u0022;alg=\u0022ecdsa-p256-sha256\u0022;tag=\u0022anis-partner-webhook-v1\u0022",
+      "Signature": "sig1=:yg7G/9/2f8xAkBNtdEVXP2XXd1QYIkz1\u002BoPv4yqxWJ3ilqo6GpKTf0\u002BHjE\u002BPbBbnczltzbKl8DjRV8PnXbrVnA==:",
+      "webhook-id": "4bceba8e-55d1-59ec-b560-6c1e08f2ae3a",
+      "anis-webhook-attempt": "1",
+      "anis-application-id": "9b2d1241-413e-4ae8-ae32-b15c58dbe101",
+      "User-Agent": "Anis-Partner-Webhooks/1.0"
+    },
+    "bodyBase64": "eyJkYXRhIjp7fX0=",
+    "bodyUtf8": "{\u0022data\u0022:{}}"
+  },
+  "signingKeys": {
+    "keys": [
+      {
+        "kty": "EC",
+        "crv": "P-256",
+        "x": "bmeAJqm9Bwq1qpRxN64CnOYN2WaslFCCduE1M2bhRQU",
+        "y": "V7rgefFMX7Vfs5UQf8NmOil4j6HmkLgyjgLQnPWVeFI",
+        "kid": "partner-webhook-signing/11111111111111111111111111111111",
+        "use": "sig",
+        "alg": "ES256",
+        "status": "active",
+        "purpose": "webhook",
+        "notBefore": "2026-10-20T08:12:20.0000000\u002B00:00"
+      },
+      {
+        "kty": "EC",
+        "crv": "P-256",
+        "x": "er2q-OPbI_D9z00KYCnHWyBy1_9G9dR-DXk10tC4w4M",
+        "y": "wCl8upDZi1PmxfC8xKhsmVidCdIpaa_DAiPu1gFYPmc",
+        "kid": "partner-webhook-signing/22222222222222222222222222222222",
+        "use": "sig",
+        "alg": "ES256",
+        "status": "next",
+        "purpose": "webhook",
+        "notBefore": "2026-10-20T08:12:20.0000000\u002B00:00"
+      },
+      {
+        "kty": "EC",
+        "crv": "P-256",
+        "x": "KpEKtjMs9wdka1QzBBzIbukX71gl2N36yrYufvktAEU",
+        "y": "cYho-fi98X3voIEv7lkMH3KjJMyFF3hbzc4_3IQd9GM",
+        "kid": "partner-webhook-signing/33333333333333333333333333333333",
+        "use": "sig",
+        "alg": "ES256",
+        "status": "retired",
+        "purpose": "webhook",
+        "notBefore": "2026-10-20T08:12:20.0000000\u002B00:00",
+        "retiredAt": "2026-10-20T08:14:10.0000000\u002B00:00"
+      },
+      {
+        "kty": "EC",
+        "crv": "P-256",
+        "x": "er2q-OPbI_D9z00KYCnHWyBy1_9G9dR-DXk10tC4w4M",
+        "y": "wCl8upDZi1PmxfC8xKhsmVidCdIpaa_DAiPu1gFYPmc",
+        "kid": "partner-response-signing/55555555555555555555555555555555",
+        "use": "sig",
+        "alg": "ES256",
+        "status": "active",
+        "purpose": "answer",
+        "notBefore": "2026-10-20T08:12:20.0000000\u002B00:00"
+      }
+    ],
+    "revoked": [
+      {
+        "kid": "partner-webhook-signing/44444444444444444444444444444444",
+        "compromisedAt": "2026-10-20T08:14:10+00:00"
+      }
+    ]
+  },
+  "expected": {
+    "outcome": "reject",
+    "reason": "envelope_invalid",
+    "rationale": "Cryptographically valid body is not a valid envelope",
+    "phase": "parse"
+  },
+  "signatureBaseForDebugging": "\u0022@method\u0022: POST\n\u0022@target-uri\u0022: https://pos.example.ly/hooks/anis\n\u0022content-digest\u0022: sha-256=:f7nRZtGhW84LnwhfOBiUb9kpfkUTpKA0oM63SSkrTA0=:\n\u0022webhook-id\u0022: 4bceba8e-55d1-59ec-b560-6c1e08f2ae3a\n\u0022anis-webhook-attempt\u0022: 1\n\u0022anis-application-id\u0022: 9b2d1241-413e-4ae8-ae32-b15c58dbe101\n\u0022@signature-params\u0022: (\u0022@method\u0022 \u0022@target-uri\u0022 \u0022content-digest\u0022 \u0022webhook-id\u0022 \u0022anis-webhook-attempt\u0022 \u0022anis-application-id\u0022);created=1792484040;expires=1792484340;keyid=\u0022partner-webhook-signing/11111111111111111111111111111111\u0022;alg=\u0022ecdsa-p256-sha256\u0022;tag=\u0022anis-partner-webhook-v1\u0022"
+}
