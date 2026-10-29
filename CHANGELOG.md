@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- `CreateDirectRechargeRequest.contact_phone`: an optional phone the Anis exchanges team calls about the direct recharge (a Libyan mobile or an international number). When omitted, Anis uses the phone saved for the partner. It is part of the request's idempotency: the same `Idempotency-Key` with a different value is an `idempotency_conflict`. Hidden from `repr`.
+
 ## [2.2.0] - 2026-10-27
 
 ### Added
