@@ -47,6 +47,7 @@ def recharge_request() -> CreateDirectRechargeRequest:
         (DirectRechargeRecipientInput("recipient_number", "01012345678"),),
         note="Family support",
         external_reference="POS-77",
+        contact_phone="0912345678",
     )
 
 
