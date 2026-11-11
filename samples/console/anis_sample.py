@@ -377,10 +377,9 @@ def _record_result(path: Path, result: object) -> None:
     elif isinstance(result, OrderNotPlaced):
         record["outcome"] = "not-placed"
         record["error_code"] = result.refusal.raw_code if isinstance(result.refusal, AnisApiError) else "unknown"
-    elif isinstance(result, OrderOutcomeUnknown):
-        if "credentials" not in record:
-            record["outcome"] = "unknown"
-            record["cause_type"] = type(result.cause).__name__
+    elif isinstance(result, OrderOutcomeUnknown) and "credentials" not in record:
+        record["outcome"] = "unknown"
+        record["cause_type"] = type(result.cause).__name__
     _atomic_private_json(path, record)
 
 

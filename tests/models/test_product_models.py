@@ -1,6 +1,6 @@
 """Pin full product reads, summaries, processing DTOs and required webhook nulls."""
 
-from dataclasses import fields
+from dataclasses import fields, replace
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -188,6 +188,7 @@ def test_request_models_round_trip_and_hide_recipient_data() -> None:
         assert "0268000710262" not in repr(model)
         assert "01012345678" not in repr(model)
         assert "Family support" not in repr(model)
+        assert "0912345678" not in repr(model)
     assert set(recharge_request().to_json()) == {
         "productId",
         "payoutAmount",
@@ -195,7 +196,10 @@ def test_request_models_round_trip_and_hide_recipient_data() -> None:
         "recipient",
         "note",
         "externalReference",
+        "contactPhone",
     }
+    assert recharge_request().to_json()["contactPhone"] == "0912345678"
+    assert "contactPhone" not in replace(recharge_request(), contact_phone=None).to_json()
     assert (
         not {"price", "priceWithCommission", "extraFee", "customerWhatsappNumber"} & recharge_request().to_json().keys()
     )

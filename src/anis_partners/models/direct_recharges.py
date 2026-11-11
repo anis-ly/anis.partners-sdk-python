@@ -111,6 +111,9 @@ class CreateDirectRechargeRequest:
     recipient: tuple[DirectRechargeRecipientInput, ...] = dataclass_field(repr=False)
     note: str | None = dataclass_field(default=None, repr=False)
     external_reference: str | None = dataclass_field(default=None, repr=False)
+    # The phone the Anis exchanges team calls about this recharge (Libyan mobile or international number).
+    # Omitted: Anis uses the phone saved for the partner. Part of the request's idempotency. Personal data.
+    contact_phone: str | None = dataclass_field(default=None, repr=False)
 
     def __post_init__(self) -> None:
         if not isinstance(self.payout_amount, str) or not re.fullmatch(r"[0-9]+\.[0-9]{3}", self.payout_amount):
@@ -134,6 +137,7 @@ class CreateDirectRechargeRequest:
             tuple(DirectRechargeRecipientInput.from_json(item) for item in recipient),
             text(field(value, "note")),
             text(field(value, "externalReference")),
+            text(field(value, "contactPhone")),
         )
 
     def to_json(self) -> dict[str, object]:

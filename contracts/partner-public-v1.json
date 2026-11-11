@@ -3607,7 +3607,8 @@
                   }
                 ],
                 "note": "Family support",
-                "externalReference": "POS-77-TR-551"
+                "externalReference": "POS-77-TR-551",
+                "contactPhone": "0912345678"
               }
             }
           }
@@ -3767,7 +3768,7 @@
             "$ref": "#/components/responses/Problem"
           },
           "409": {
-            "description": "idempotency_conflict for a changed application, wallet, product, amounts, recipient, note or reference under the same key, or for a duplicate id that stays unknown to this application a minute after admission; replay_detected for a reused nonce; insufficient_balance when the wallet cannot cover the total; price_changed when the quote moved; direct_recharge_product_unavailable when the product is unavailable, Fazaa-only for this wallet or has no price for its tier. Recovery depends on the code. idempotency_conflict and replay_detected do not say the original request failed: it may already have been accepted and charged, so never assume nothing was charged; read the original operation with GET /v1/direct-recharges/{operationId} before any new attempt. To repeat the same intent after replay_detected, keep the Idempotency-Key and send a fresh nonce and signature. After idempotency_conflict, reuse the key only for identical intent and use a new Idempotency-Key only for a genuinely new operation. insufficient_balance, price_changed and direct_recharge_product_unavailable are refusals before any money moved: nothing was charged, and a new attempt needs a new Idempotency-Key once the balance, the quote or the product choice has changed.",
+            "description": "idempotency_conflict for a changed application, wallet, product, amounts, recipient, note, reference or contact phone under the same key, or for a duplicate id that stays unknown to this application a minute after admission; replay_detected for a reused nonce; insufficient_balance when the wallet cannot cover the total; price_changed when the quote moved; direct_recharge_product_unavailable when the product is unavailable, Fazaa-only for this wallet or has no price for its tier. Recovery depends on the code. idempotency_conflict and replay_detected do not say the original request failed: it may already have been accepted and charged, so never assume nothing was charged; read the original operation with GET /v1/direct-recharges/{operationId} before any new attempt. To repeat the same intent after replay_detected, keep the Idempotency-Key and send a fresh nonce and signature. After idempotency_conflict, reuse the key only for identical intent and use a new Idempotency-Key only for a genuinely new operation. insufficient_balance, price_changed and direct_recharge_product_unavailable are refusals before any money moved: nothing was charged, and a new attempt needs a new Idempotency-Key once the balance, the quote or the product choice has changed.",
             "headers": {
               "X-Request-Id": {
                 "$ref": "#/components/headers/XRequestId"
@@ -7692,6 +7693,12 @@
             "minLength": 1,
             "maxLength": 100,
             "pattern": "^[A-Za-z0-9\\-_.:/# ]+$"
+          },
+          "contactPhone": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32,
+            "description": "The phone the exchanges team calls about this recharge: a Libyan mobile number or an international number. When omitted, the phone saved for the partner is used."
           }
         }
       },
